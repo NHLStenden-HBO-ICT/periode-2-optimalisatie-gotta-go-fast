@@ -23,6 +23,17 @@ class Game
 
     Tank& find_closest_enemy(Tank& current_tank);
 
+    //new stuff
+    void init_tank_routes();
+    void nudge_and_collide_tanks();
+    void update_tanks();
+    void update_smoke();
+    void find_concave_hull();
+    void update_rockets();
+    void update_particle_beams();
+    void update_explosions();
+
+
     void mouse_up(int button)
     { /* implement if you want to detect mouse button presses */
     }

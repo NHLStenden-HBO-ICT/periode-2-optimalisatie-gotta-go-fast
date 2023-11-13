@@ -14,7 +14,7 @@ constexpr auto health_bar_width = 70;
 constexpr auto max_frames = 2000;
 
 //Global performance timer
-constexpr auto REF_PERFORMANCE = 114757; //UPDATE THIS WITH YOUR REFERENCE PERFORMANCE (see console after 2k frames)
+constexpr auto REF_PERFORMANCE = 94653; //UPDATE THIS WITH YOUR REFERENCE PERFORMANCE (see console after 2k frames)
 static timer perf_timer;
 static float duration;
 
@@ -117,26 +117,16 @@ bool Tmpl8::Game::left_of_line(vec2 line_start, vec2 line_end, vec2 point)
     return ((line_end.x - line_start.x) * (point.y - line_start.y) - (line_end.y - line_start.y) * (point.x - line_start.x)) < 0;
 }
 
-// -----------------------------------------------------------
-// Update the game state:
-// Move all objects
-// Update sprite frames
-// Collision detection
-// Targeting etc..
-// -----------------------------------------------------------
-void Game::update(float deltaTime)
-{
-    //Calculate the route to the destination for each tank using BFS
-    //Initializing routes here so it gets counted for performance..
-    if (frame_count == 0)
+//Calculate the route to the destination for each tank using BFS
+void Game::init_tank_routes() {
+    for (Tank& t : tanks)
     {
-        for (Tank& t : tanks)
-        {
-            t.set_route(background_terrain.get_route(t, t.target));
-        }
+        t.set_route(background_terrain.get_route(t, t.target));
     }
+}
 
-    //Check tank collision and nudge tanks away from each other
+//Check tank collision and nudge tanks away from each other
+void Game::nudge_and_collide_tanks() {
     for (Tank& tank : tanks)
     {
         if (tank.active)
@@ -158,8 +148,10 @@ void Game::update(float deltaTime)
             }
         }
     }
+}
 
-    //Update tanks
+//Update tanks
+void Game::update_tanks() {
     for (Tank& tank : tanks)
     {
         if (tank.active)
@@ -178,13 +170,18 @@ void Game::update(float deltaTime)
             }
         }
     }
+}
 
-    //Update smoke plumes
+//Update smoke plumes
+void Game::update_smoke() {
     for (Smoke& smoke : smokes)
     {
         smoke.tick();
     }
+}
 
+//Calculates a convex hull around all the tanks
+void Game::find_concave_hull() {
     //Calculate "forcefield" around active tanks
     forcefield_hull.clear();
 
@@ -241,8 +238,10 @@ void Game::update(float deltaTime)
             break;
         }
     }
+}
 
-    //Update rockets
+//loop over all the rockets, move and collide them with either the tanks or the concave hull
+void Game::update_rockets() {
     for (Rocket& rocket : rockets)
     {
         rocket.tick();
@@ -286,8 +285,10 @@ void Game::update(float deltaTime)
 
     //Remove exploded rockets with remove erase idiom
     rockets.erase(std::remove_if(rockets.begin(), rockets.end(), [](const Rocket& rocket) { return !rocket.active; }), rockets.end());
+}
 
-    //Update particle beams
+//Update particle beams
+void Game::update_particle_beams() {
     for (Particle_beam& particle_beam : particle_beams)
     {
         particle_beam.tick(tanks);
@@ -304,14 +305,47 @@ void Game::update(float deltaTime)
             }
         }
     }
+}
 
-    //Update explosion sprites and remove when done with remove erase idiom
+//Update explosion sprites and remove when done with remove erase idiom
+void Game::update_explosions() {
     for (Explosion& explosion : explosions)
     {
         explosion.tick();
     }
 
     explosions.erase(std::remove_if(explosions.begin(), explosions.end(), [](const Explosion& explosion) { return explosion.done(); }), explosions.end());
+}
+
+
+// -----------------------------------------------------------
+// Update the game state:
+// Move all objects
+// Update sprite frames
+// Collision detection
+// Targeting etc..
+// -----------------------------------------------------------
+void Game::update(float deltaTime)
+{   
+    //Initializing routes here so it gets counted for performance..
+    if (frame_count == 0)
+    {
+        init_tank_routes();
+    }
+
+    nudge_and_collide_tanks();
+
+    update_tanks();
+
+    update_smoke();
+
+    find_concave_hull();
+    
+    update_rockets();
+   
+    update_particle_beams();
+
+    update_explosions();    
 }
 
 // -----------------------------------------------------------
