@@ -41,6 +41,14 @@ const static vec2 rocket_size(6, 6);
 const static float tank_radius = 3.f;
 const static float rocket_radius = 5.f;
 
+//===========================================
+// Main bottlenecks
+// ~ Single threading
+// ~ nudge_and_collide_tanks (n^2)
+// ~ update_tanks (n^2)
+//===========================================
+
+
 // -----------------------------------------------------------
 // Initialize the simulation state
 // This function does not count for the performance multiplier
@@ -164,7 +172,7 @@ void Game::nudge_and_collide_tanks() {
 }
 
 // -----------------------------------------------------------
-// Update tanks
+// Update tanks 
 // O(n^2)=n^2
 // n is the amount of tanks
 // -----------------------------------------------------------
