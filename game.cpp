@@ -41,6 +41,14 @@ const static vec2 rocket_size(6, 6);
 const static float tank_radius = 3.f;
 const static float rocket_radius = 5.f;
 
+//===========================================
+// Main bottlenecks
+// ~ Single threading
+// ~ nudge_and_collide_tanks (n^2)
+// ~ update_tanks (n^2)
+//===========================================
+
+
 // -----------------------------------------------------------
 // Initialize the simulation state
 // This function does not count for the performance multiplier
@@ -89,6 +97,8 @@ void Game::shutdown()
 
 // -----------------------------------------------------------
 // Iterates through all tanks and returns the closest enemy tank for the given tank
+// O(n)=n
+// n is the amount of tanks
 // -----------------------------------------------------------
 Tank& Game::find_closest_enemy(Tank& current_tank)
 {
@@ -111,13 +121,20 @@ Tank& Game::find_closest_enemy(Tank& current_tank)
     return tanks.at(closest_index);
 }
 
-//Checks if a point lies on the left of an arbitrary angled line
+// -----------------------------------------------------------
+// Checks if a point lies on the left of an arbitrary angled line
+// -----------------------------------------------------------
 bool Tmpl8::Game::left_of_line(vec2 line_start, vec2 line_end, vec2 point)
 {
     return ((line_end.x - line_start.x) * (point.y - line_start.y) - (line_end.y - line_start.y) * (point.x - line_start.x)) < 0;
 }
 
-//Calculate the route to the destination for each tank using BFS
+// -----------------------------------------------------------
+// Calculate the route to the destination for each tank using BFS
+// O(n)=n*m 
+// n is the amount of tanks
+// m is the amount of terain exits that is used in get route
+// -----------------------------------------------------------
 void Game::init_tank_routes() {
     for (Tank& t : tanks)
     {
@@ -125,7 +142,11 @@ void Game::init_tank_routes() {
     }
 }
 
-//Check tank collision and nudge tanks away from each other
+// -----------------------------------------------------------
+// Check tank collision and nudge tanks away from each other
+// O(n^2)=n^2
+// n is the amount of tanks
+// -----------------------------------------------------------
 void Game::nudge_and_collide_tanks() {
     for (Tank& tank : tanks)
     {
@@ -150,7 +171,11 @@ void Game::nudge_and_collide_tanks() {
     }
 }
 
-//Update tanks
+// -----------------------------------------------------------
+// Update tanks 
+// O(n^2)=n^2
+// n is the amount of tanks
+// -----------------------------------------------------------
 void Game::update_tanks() {
     for (Tank& tank : tanks)
     {
@@ -172,7 +197,11 @@ void Game::update_tanks() {
     }
 }
 
-//Update smoke plumes
+// -----------------------------------------------------------
+// Update smoke plumes
+// O(n)=n
+// n is the amount of smoke
+// -----------------------------------------------------------
 void Game::update_smoke() {
     for (Smoke& smoke : smokes)
     {
@@ -180,7 +209,11 @@ void Game::update_smoke() {
     }
 }
 
-//Calculates a convex hull around all the tanks
+// -----------------------------------------------------------
+// Calculates a convex hull around all the tanks
+// O(n)=2*n
+// n is the amount of tanks
+// -----------------------------------------------------------
 void Game::find_concave_hull() {
     //Calculate "forcefield" around active tanks
     forcefield_hull.clear();
@@ -240,7 +273,13 @@ void Game::find_concave_hull() {
     }
 }
 
-//loop over all the rockets, move and collide them with either the tanks or the concave hull
+// -----------------------------------------------------------
+// Loop over all the rockets, move and collide them with either the tanks or the concave hull
+// O(n)=n*m + n*k = n(m+k)
+// n is the amount of rockets
+// m is the amount of tanks
+// k is the size of the forcefield hull
+// -----------------------------------------------------------
 void Game::update_rockets() {
     for (Rocket& rocket : rockets)
     {
@@ -287,7 +326,12 @@ void Game::update_rockets() {
     rockets.erase(std::remove_if(rockets.begin(), rockets.end(), [](const Rocket& rocket) { return !rocket.active; }), rockets.end());
 }
 
+// -----------------------------------------------------------
 //Update particle beams
+// O(n)=n*m
+// n is the amount of tanks
+// m is the amount of Particle beams
+// -----------------------------------------------------------
 void Game::update_particle_beams() {
     for (Particle_beam& particle_beam : particle_beams)
     {
@@ -307,7 +351,11 @@ void Game::update_particle_beams() {
     }
 }
 
+// -----------------------------------------------------------
 //Update explosion sprites and remove when done with remove erase idiom
+// O(n)=n
+// n is the amount of explosions
+// -----------------------------------------------------------
 void Game::update_explosions() {
     for (Explosion& explosion : explosions)
     {
