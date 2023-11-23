@@ -127,7 +127,7 @@ node* search(node* root, Tank tank) {
 
 node* update(node* root,bool x) {
     //check if left still correct,
-    //first go to the smallest node, bij checking if left has any lefties., first check if tank is active then check if small 
+    //first go to the smallest node, bij checking if leftthe left node of root has any lefties if none means the left is last so check righties if none means last and you can sort, first check if tank is active then check rest.
 
     if (root->left->tank->position.x > root->right->tank->position.x) {
         //left replaces right, right replaces root and root replaces left
