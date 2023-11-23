@@ -48,6 +48,102 @@ const static float rocket_radius = 5.f;
 // ~ update_tanks (n^2)
 //===========================================
 
+struct node
+{
+    Tank* tank; //pointer to a tank
+    struct node* left;
+    struct node* right;
+
+};
+
+struct node* newnode(Tank* tank) {
+
+    struct node* node
+        = (struct node*)malloc(sizeof(struct node));
+
+    node->tank = tank;
+    node->left = NULL;
+    node->right = NULL;
+
+}
+
+node* insertnode(node* root, Tank* tank, bool x) {
+    if (root == NULL) {
+        return newnode(tank);
+    }
+
+    if (root->tank = tank) {
+        return root;
+    }
+
+    //if x is true check on that level on the x-as otherwise check for y
+    if (x) {
+        if (tank->position.x <= root->tank->position.x) {
+            root->left = insertnode(root->left, tank,false);
+            return root;
+        }        
+        if (tank->position.x > root->tank->position.x) {
+            root->right = insertnode(root->right, tank, false);
+            return root;
+        }
+    }
+
+    if (!x) {
+        if (tank->position.y <= root->tank->position.y) {
+            root->left = insertnode(root->left, tank, true);
+            return root;
+        }
+        if (tank->position.y > root->tank->position.y) {
+            root->right = insertnode(root->right, tank, true);
+            return root;
+        }
+    }
+
+}
+
+node* search(node* root, Tank tank) {
+
+    //check if left is shortest
+    if (root->left != NULL && fabsf((root->left->tank->get_position() - tank.get_position()).sqr_length()) < fabsf((root->tank->get_position() - tank.get_position()).sqr_length())) {
+        if (root->left->left == NULL && root->left->right == NULL) {
+            return root->left;
+        }
+        return search(root->left, tank);
+    }
+    //check if right is shortest
+    else if (root->right != NULL && fabsf((root->right->tank->get_position() - tank.get_position()).sqr_length()) < fabsf((root->tank->get_position() - tank.get_position()).sqr_length())) {
+        if (root->right->left == NULL && root->right->right == NULL) {
+            return root->right;
+        }
+        return search(root->right, tank);
+    }
+    else {
+        return root;
+    }
+
+}
+
+//TODO update the nodes and put it all in one class
+
+node* update(node* root,bool x) {
+    //check if left still correct,
+    //first go to the smallest node, bij checking if left has any lefties., first check if tank is active then check if small 
+
+    if (root->left->tank->position.x > root->right->tank->position.x) {
+        //left replaces right, right replaces root and root replaces left
+    }
+    else if (root->left->tank->position.x > root->tank->position.x)
+    {
+        //left replaces root, right stays the same and root replaces left
+    }
+    else if (root->right->tank->position.x < root->tank->position.x) {
+        //left stays the same, right replaces root and root replaces right 
+    }
+    else {
+        //nothing happens.
+    }
+
+}
 
 // -----------------------------------------------------------
 // Initialize the simulation state
@@ -70,6 +166,7 @@ void Game::init()
 
     float spacing = 7.5f;
 
+
     //Spawn blue tanks
     for (int i = 0; i < num_tanks_blue; i++)
     {
@@ -86,6 +183,25 @@ void Game::init()
     particle_beams.push_back(Particle_beam(vec2(590, 327), vec2(100, 50), &particle_beam_sprite, particle_beam_hit_value));
     particle_beams.push_back(Particle_beam(vec2(64, 64), vec2(100, 50), &particle_beam_sprite, particle_beam_hit_value));
     particle_beams.push_back(Particle_beam(vec2(1200, 600), vec2(100, 50), &particle_beam_sprite, particle_beam_hit_value));
+
+//initialise tree first get root tank aka middlest tank 
+
+    Tank* Rootblue = &tanks[(num_tanks_blue / 2)-1];
+    Tank* Rootred = &tanks[(num_tanks_red / 2)+ num_tanks_blue - 1];
+
+    struct node* rootBlue = insertnode(NULL,Rootblue,false);
+    struct node* rootRed = insertnode(NULL,Rootred,false);
+
+    for (Tank& t : tanks) {
+        if (t.allignment == BLUE) {
+            rootBlue = insertnode(rootBlue, &t,true);
+        }
+        if (t.allignment == RED) {
+            rootRed = insertnode(rootRed, &t, true);
+        }
+    }
+
+
 }
 
 // -----------------------------------------------------------
