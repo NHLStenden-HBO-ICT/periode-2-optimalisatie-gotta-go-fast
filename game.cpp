@@ -75,7 +75,7 @@ node* insertnode(node* root, Tank* tank, bool x) {
     if (root->tank = tank) {
         return root;
     }
-
+    //todo diepte interger for boom.
     //if x is true check on that level on the x-as otherwise check for y
     if (x) {
         if (tank->position.x <= root->tank->position.x) {
@@ -103,6 +103,7 @@ node* insertnode(node* root, Tank* tank, bool x) {
 
 node* search(node* root, Tank tank) {
 
+    //todo interger diepte
     //check if left is shortest
     if (root->left != NULL && fabsf((root->left->tank->get_position() - tank.get_position()).sqr_length()) < fabsf((root->tank->get_position() - tank.get_position()).sqr_length())) {
         if (root->left->left == NULL && root->left->right == NULL) {
