@@ -41,6 +41,9 @@ const static vec2 rocket_size(6, 6);
 const static float tank_radius = 3.f;
 const static float rocket_radius = 5.f;
 
+struct node* rootBlue;
+struct node* rootRed;
+
 //===========================================
 // Main bottlenecks
 // ~ Single threading
@@ -102,7 +105,7 @@ node* insertnode(node* root, Tank* tank, bool x, int i) {
 
 }
 
-node* search(node* root, Tank tank) {
+node* searchClosest(node* root, Tank tank) {
 
     //todo interger diepte
     //check if left is shortest
@@ -110,14 +113,14 @@ node* search(node* root, Tank tank) {
         if (root->left->left == NULL && root->left->right == NULL) {
             return root->left;
         }
-        return search(root->left, tank);
+        return searchClosest(root->left, tank);
     }
     //check if right is shortest
     else if (root->right != NULL && fabsf((root->right->tank->get_position() - tank.get_position()).sqr_length()) < fabsf((root->tank->get_position() - tank.get_position()).sqr_length())) {
         if (root->right->left == NULL && root->right->right == NULL) {
             return root->right;
         }
-        return search(root->right, tank);
+        return searchClosest(root->right, tank);
     }
     else {
         return root;
@@ -126,12 +129,57 @@ node* search(node* root, Tank tank) {
 }
 
 //TODO update the nodes and put it all in one class
+node* updateinsert(node* root, bool x) {//TODO vontinue writing
+    list<node*> resortedchilderen;
+
+    if (root->left != NULL && root->right != NULL) {
+        if (root->left->left != NULL || root->left->left != NULL) {
+            root->left = updateinsert(root->left, !x);
+        }//a1
+        if (root->right->right != NULL || root->right->right != NULL) {
+            root->right = updateinsert(root->right, !x);
+        }//a2
+
+        if (root->left->tank->position.x > root->right->tank->position.x) {
+            if (root->right->tank->position.x < root->tank->position.x) {
+                resortedchilderen.push_back(root->right);
+                resortedchilderen.push_back(root->left);
+                root->left = NULL;
+                root->right = NULL;
+                return root;
+            }//a3a
+            node* childright= root->right;
+            resortedchilderen.push_back(root->left);
+            root->left = NULL;
+            root->right = NULL;
+            resortedchilderen.push_back(root);
+            return childright;
+        }//a3
+
+        //a4
+    }//a
+    if (root->right == NULL && root->left != NULL) {
+        if (root->left->left != NULL || root->left->left != NULL) {
+            root->left = updateinsert(root->left, !x);
+        }//b1
+        //b2
+    }//b
+
+    if (root->left == NULL && root->right != NULL) {
+        if (root->right->right != NULL || root->right->right != NULL) {
+            root->right = updateinsert(root->right, !x);
+        }//c1
+        //c2
+    }//c
+
+}
+
 
 node* update(node* root,bool x) {
 
     node* childleft;
     node* childright;
-
+    //update based on location
     if (root->left != NULL) {
         node* childleft = root->left;
         if (root->left->left != NULL || root->left->right != NULL) {
@@ -146,9 +194,12 @@ node* update(node* root,bool x) {
         }
     }
 
+
+
     if (x==true){
         if (root->left->tank->position.x > root->right->tank->position.x && root->left != NULL && root->right != NULL) {
             if (root->right->tank->position.x < root->tank->position.x) {
+                //left replaces right, right replaces left and root stays
                 root->left = childright;
                 root->right = childleft;
                 return root;
@@ -188,29 +239,17 @@ node* update(node* root,bool x) {
         else if (root->left->tank->position.x > root->tank->position.x && root->left != NULL)
         {
             //left replaces root, right stays the same and root replaces left
-            //                          root
-            //                         /    \
-            //                      left    right
-            //                      a  b    c   d
+
             root->left = childleft->left;
             root->right = childleft->right;
 
             childleft->left = root;
             childleft->right = childright;
 
-
-            //                         left
-            //                        /     \
-            //                     root     right
-            //                     a  b     c  d
             return childleft;
         }
         else if (root->right->tank->position.x < root->tank->position.x && root->right != NULL) {
-            //left stays the same, right replaces root and root replaces right 
-            //                          root
-            //                         /    \
-            //                      left    right
-            //                      a  b    c   d
+
 
             root->left = childright->left;
             root->right = childright->right;
@@ -218,22 +257,18 @@ node* update(node* root,bool x) {
             childright->left = childleft;
             childright->right = root;
 
-            //                         right
-            //                        /     \
-            //                     left     root
-            //                     a  b     c  d
-
             return childright;
         }
     }
     if (x == false) {
         if (root->left->tank->position.y > root->right->tank->position.y && root->left != NULL && root->right != NULL) {
             if (root->right->tank->position.y < root->tank->position.y) {
+                //left replaces right, right replaces left and root stays
                 root->left = childright;
                 root->right = childleft;
                 return root;
             }
-           
+            //left replaces right, right replaces root and root replaces left
             root->left = childleft->left;
             root->right = childleft->right;
 
@@ -271,7 +306,6 @@ node* update(node* root,bool x) {
         }
 
     }
-
 
     return root;
 }
@@ -320,8 +354,8 @@ void Game::init()
     Tank* Rootblue = &tanks[(num_tanks_blue / 2)-1];
     Tank* Rootred = &tanks[(num_tanks_red / 2)+ num_tanks_blue - 1];
 
-    struct node* rootBlue = insertnode(NULL,Rootblue,false,0);
-    struct node* rootRed = insertnode(NULL,Rootred,false,0);
+    rootBlue = insertnode(NULL,Rootblue,false,0);
+    rootRed = insertnode(NULL,Rootred,false,0);
 
     for (Tank& t : tanks) {
         if (t.allignment == BLUE) {
@@ -351,6 +385,13 @@ Tank& Game::find_closest_enemy(Tank& current_tank)
 {
     float closest_distance = numeric_limits<float>::infinity();
     int closest_index = 0;
+
+    if (current_tank.allignment == RED) {
+
+    }    
+    if (current_tank.allignment == BLUE) {
+
+    }
 
     for (int i = 0; i < tanks.size(); i++)
     {
@@ -627,6 +668,7 @@ void Game::update(float deltaTime)
     {
         init_tank_routes();
     }
+    
 
     nudge_and_collide_tanks();
 
