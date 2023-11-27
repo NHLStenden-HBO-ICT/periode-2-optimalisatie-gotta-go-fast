@@ -67,7 +67,7 @@ struct node* newnode(Tank* tank) {
 
 }
 
-node* insertnode(node* root, Tank* tank, bool x) {
+node* insertnode(node* root, Tank* tank, bool x, int i) {
     if (root == NULL) {
         return newnode(tank);
     }
@@ -75,26 +75,27 @@ node* insertnode(node* root, Tank* tank, bool x) {
     if (root->tank = tank) {
         return root;
     }
+
     //todo diepte interger for boom.
     //if x is true check on that level on the x-as otherwise check for y
     if (x) {
         if (tank->position.x <= root->tank->position.x) {
-            root->left = insertnode(root->left, tank,false);
+            root->left = insertnode(root->left, tank,false,i++);
             return root;
         }        
         if (tank->position.x > root->tank->position.x) {
-            root->right = insertnode(root->right, tank, false);
+            root->right = insertnode(root->right, tank, false,i++);
             return root;
         }
     }
 
     if (!x) {
         if (tank->position.y <= root->tank->position.y) {
-            root->left = insertnode(root->left, tank, true);
+            root->left = insertnode(root->left, tank, true, i++);
             return root;
         }
         if (tank->position.y > root->tank->position.y) {
-            root->right = insertnode(root->right, tank, true);
+            root->right = insertnode(root->right, tank, true, i++);
             return root;
         }
     }
@@ -127,23 +128,152 @@ node* search(node* root, Tank tank) {
 //TODO update the nodes and put it all in one class
 
 node* update(node* root,bool x) {
-    //check if left still correct,
-    //first go to the smallest node, bij checking if leftthe left node of root has any lefties if none means the left is last so check righties if none means last and you can sort, first check if tank is active then check rest.
 
-    if (root->left->tank->position.x > root->right->tank->position.x) {
-        //left replaces right, right replaces root and root replaces left
-    }
-    else if (root->left->tank->position.x > root->tank->position.x)
-    {
-        //left replaces root, right stays the same and root replaces left
-    }
-    else if (root->right->tank->position.x < root->tank->position.x) {
-        //left stays the same, right replaces root and root replaces right 
-    }
-    else {
-        //nothing happens.
+    node* childleft;
+    node* childright;
+
+    if (root->left != NULL) {
+        node* childleft = root->left;
+        if (root->left->left != NULL || root->left->right != NULL) {
+            root->left = update(root->left, !x);
+        }
     }
 
+    if (root->right != NULL) {
+        node* childright = root->right;
+        if (root->right->left != NULL || root->right->right != NULL) {
+            root->right = update(root->right, !x);
+        }
+    }
+
+    if (x==true){
+        if (root->left->tank->position.x > root->right->tank->position.x && root->left != NULL && root->right != NULL) {
+            if (root->right->tank->position.x < root->tank->position.x) {
+                root->left = childright;
+                root->right = childleft;
+                return root;
+            }
+            //left replaces right, right replaces root and root replaces left
+
+            //                          root
+            //                         /    \
+            //                      left    right
+            //                      a  b    c   d
+
+            root->left = childleft->left;
+            root->right = childleft->right;
+
+            //                         root         left     right
+            //                        /    \       /    \   /     \
+            //                       a      b     a      b c       d
+
+            childleft->left = childright->left;
+            childleft->right = childright->right;
+
+            //                         root         left     right
+            //                        /    \       /    \   /     \
+            //                       a      b     c      d c       d
+
+            childright->left = root;
+            childright->right = childleft;
+
+            //                              right
+            //                             /     \
+            //                         root       left   
+            //                        /    \     /    \  
+            //                       a      b   c      d 
+
+            return childright;
+        }
+        else if (root->left->tank->position.x > root->tank->position.x && root->left != NULL)
+        {
+            //left replaces root, right stays the same and root replaces left
+            //                          root
+            //                         /    \
+            //                      left    right
+            //                      a  b    c   d
+            root->left = childleft->left;
+            root->right = childleft->right;
+
+            childleft->left = root;
+            childleft->right = childright;
+
+
+            //                         left
+            //                        /     \
+            //                     root     right
+            //                     a  b     c  d
+            return childleft;
+        }
+        else if (root->right->tank->position.x < root->tank->position.x && root->right != NULL) {
+            //left stays the same, right replaces root and root replaces right 
+            //                          root
+            //                         /    \
+            //                      left    right
+            //                      a  b    c   d
+
+            root->left = childright->left;
+            root->right = childright->right;
+
+            childright->left = childleft;
+            childright->right = root;
+
+            //                         right
+            //                        /     \
+            //                     left     root
+            //                     a  b     c  d
+
+            return childright;
+        }
+    }
+    if (x == false) {
+        if (root->left->tank->position.y > root->right->tank->position.y && root->left != NULL && root->right != NULL) {
+            if (root->right->tank->position.y < root->tank->position.y) {
+                root->left = childright;
+                root->right = childleft;
+                return root;
+            }
+           
+            root->left = childleft->left;
+            root->right = childleft->right;
+
+            childleft->left = childright->left;
+            childleft->right = childright->right;
+         
+            childright->left = root;
+            childright->right = childleft;
+
+            return childright;
+        }
+        else if (root->left->tank->position.y > root->tank->position.y && root->left != NULL)
+        {
+            //left replaces root, right stays the same and root replaces left
+
+            root->left = childleft->left;
+            root->right = childleft->right;
+
+            childleft->left = root;
+            childleft->right = childright;
+
+            return childleft;
+        }
+        else if (root->right->tank->position.y < root->tank->position.y && root->right != NULL) {
+            //left stays the same, right replaces root and root replaces right 
+
+            root->left = childright->left;
+            root->right = childright->right;
+
+            childright->left = childleft;
+            childright->right = root;
+
+
+            return childright;
+        }
+
+    }
+
+
+    return root;
 }
 
 // -----------------------------------------------------------
@@ -185,20 +315,20 @@ void Game::init()
     particle_beams.push_back(Particle_beam(vec2(64, 64), vec2(100, 50), &particle_beam_sprite, particle_beam_hit_value));
     particle_beams.push_back(Particle_beam(vec2(1200, 600), vec2(100, 50), &particle_beam_sprite, particle_beam_hit_value));
 
-//initialise tree first get root tank aka middlest tank 
+    //initialise tree first get root tank aka middlest tank 
 
     Tank* Rootblue = &tanks[(num_tanks_blue / 2)-1];
     Tank* Rootred = &tanks[(num_tanks_red / 2)+ num_tanks_blue - 1];
 
-    struct node* rootBlue = insertnode(NULL,Rootblue,false);
-    struct node* rootRed = insertnode(NULL,Rootred,false);
+    struct node* rootBlue = insertnode(NULL,Rootblue,false,0);
+    struct node* rootRed = insertnode(NULL,Rootred,false,0);
 
     for (Tank& t : tanks) {
         if (t.allignment == BLUE) {
-            rootBlue = insertnode(rootBlue, &t,true);
+            rootBlue = insertnode(rootBlue, &t,true,0);
         }
         if (t.allignment == RED) {
-            rootRed = insertnode(rootRed, &t, true);
+            rootRed = insertnode(rootRed, &t, true,0);
         }
     }
 
