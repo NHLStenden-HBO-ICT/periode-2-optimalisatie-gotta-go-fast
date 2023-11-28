@@ -44,6 +44,8 @@ const static float rocket_radius = 5.f;
 struct node* rootBlue;
 struct node* rootRed;
 
+vector<node*> tobesortedchilderen; //turn in vector
+
 //===========================================
 // Main bottlenecks
 // ~ Single threading
@@ -51,6 +53,7 @@ struct node* rootRed;
 // ~ update_tanks (n^2)
 //===========================================
 
+#pragma region Node/kdtree
 struct node
 {
     Tank* tank; //pointer to a tank
@@ -68,37 +71,69 @@ struct node* newnode(Tank* tank) {
     node->left = NULL;
     node->right = NULL;
 
+    return node;
 }
 
-node* insertnode(node* root, Tank* tank, bool x, int i) {
+node* inserttank(node* root, Tank* tank, bool x, int i) {
     if (root == NULL) {
+        //cout << i << std::endl;
         return newnode(tank);
     }
 
-    if (root->tank = tank) {
-        return root;
+    i = i + 1;
+    if (x==true) {
+
+        if (tank->position.x <= root->tank->position.x) {
+            root->left = inserttank(root->left, tank, !x, i);
+            return root;
+        }
+        if (tank->position.x > root->tank->position.x) {
+            root->right = inserttank(root->right, tank, !x, i);
+            return root;
+        }
+    }
+
+    if (x==false) {
+        if (tank->position.y <= root->tank->position.y) {
+           
+            root->left = inserttank(root->left, tank, !x, i);
+            return root;
+        }
+        if (tank->position.y > root->tank->position.y) {
+
+            root->right = inserttank(root->right, tank, !x, i);
+            return root;
+        }
+    }
+
+}
+
+node* insertnode(node* root, node* newnode, bool x, int i) {
+
+    if (root == NULL) {
+        return newnode;
     }
 
     //todo diepte interger for boom.
     //if x is true check on that level on the x-as otherwise check for y
     if (x) {
-        if (tank->position.x <= root->tank->position.x) {
-            root->left = insertnode(root->left, tank,false,i++);
+        if (newnode->tank->position.x <= root->tank->position.x) {
+            root->left = insertnode(root->left, newnode, false, i++);
             return root;
-        }        
-        if (tank->position.x > root->tank->position.x) {
-            root->right = insertnode(root->right, tank, false,i++);
+        }
+        if (newnode->tank->position.x > root->tank->position.x) {
+            root->right = insertnode(root->right, newnode, false, i++);
             return root;
         }
     }
 
     if (!x) {
-        if (tank->position.y <= root->tank->position.y) {
-            root->left = insertnode(root->left, tank, true, i++);
+        if (newnode->tank->position.y <= root->tank->position.y) {
+            root->left = insertnode(root->left, newnode, true, i++);
             return root;
         }
-        if (tank->position.y > root->tank->position.y) {
-            root->right = insertnode(root->right, tank, true, i++);
+        if (newnode->tank->position.y > root->tank->position.y) {
+            root->right = insertnode(root->right, newnode, true, i++);
             return root;
         }
     }
@@ -129,186 +164,74 @@ node* searchClosest(node* root, Tank tank) {
 }
 
 //TODO update the nodes and put it all in one class
-node* updateinsert(node* root, bool x) {//TODO vontinue writing
-    list<node*> resortedchilderen;
+node* updateinsert(node* root, bool x, vector<node*>* tobesortedchilderen) {
 
     if (root->left != NULL && root->right != NULL) {
-        if (root->left->left != NULL || root->left->left != NULL) {
-            root->left = updateinsert(root->left, !x);
-        }//a1
-        if (root->right->right != NULL || root->right->right != NULL) {
-            root->right = updateinsert(root->right, !x);
-        }//a2
+        
+        if (root->left->left != NULL || root->left->right != NULL) {
+            root->left = updateinsert(root->left, !x, tobesortedchilderen);
+        }
+        
+        if (root->left->tank->active == true) {
+            tobesortedchilderen->push_back(root->left);
+            
+        }
 
-        if (root->left->tank->position.x > root->right->tank->position.x) {
-            if (root->right->tank->position.x < root->tank->position.x) {
-                resortedchilderen.push_back(root->right);
-                resortedchilderen.push_back(root->left);
-                root->left = NULL;
-                root->right = NULL;
-                return root;
-            }//a3a
-            node* childright= root->right;
-            resortedchilderen.push_back(root->left);
-            root->left = NULL;
-            root->right = NULL;
-            resortedchilderen.push_back(root);
-            return childright;
-        }//a3
+        if (root->right->right != NULL || root->right->left != NULL) {
+            root->right = updateinsert(root->right, !x, tobesortedchilderen);
+        }
+        if (root->right->tank->active == true) {
+            tobesortedchilderen->push_back(root->right);
+            
+        }
+        root->left = NULL;
+        root->right = NULL;
+        
+        return root;
 
-        //a4
-    }//a
+    }
+
     if (root->right == NULL && root->left != NULL) {
-        if (root->left->left != NULL || root->left->left != NULL) {
-            root->left = updateinsert(root->left, !x);
-        }//b1
-        //b2
-    }//b
+        
+        if (root->left->left != NULL || root->left->right != NULL) {
+            root->left = updateinsert(root->left, !x, tobesortedchilderen);
+        }
+
+        if (root->left->tank->active == true) {
+            tobesortedchilderen->push_back(root->left);
+            
+        }
+        root->left = NULL;
+        
+        return root;
+    }
 
     if (root->left == NULL && root->right != NULL) {
-        if (root->right->right != NULL || root->right->right != NULL) {
-            root->right = updateinsert(root->right, !x);
-        }//c1
-        //c2
-    }//c
+        
+        if (root->right->right != NULL || root->right->left != NULL) {
+            root->right = updateinsert(root->right, !x, tobesortedchilderen);
+        }
+        if (root->right->tank->active == true) {
+            tobesortedchilderen->push_back(root->right);
+            
+        }
+        root->right = NULL;
+        
+        return root;
+    }
+
+    if (root->left == NULL && root->right == NULL && root->tank->active == true) {
+        cout << "root is active and needs to be added to list" << endl;
+        tobesortedchilderen->push_back(root);
+        node* newroot = tobesortedchilderen->at(tobesortedchilderen->size() - 1);
+
+        return tobesortedchilderen->at(tobesortedchilderen->size());
+    }
 
 }
+#pragma endregion
 
 
-node* update(node* root,bool x) {
-
-    node* childleft;
-    node* childright;
-    //update based on location
-    if (root->left != NULL) {
-        node* childleft = root->left;
-        if (root->left->left != NULL || root->left->right != NULL) {
-            root->left = update(root->left, !x);
-        }
-    }
-
-    if (root->right != NULL) {
-        node* childright = root->right;
-        if (root->right->left != NULL || root->right->right != NULL) {
-            root->right = update(root->right, !x);
-        }
-    }
-
-
-
-    if (x==true){
-        if (root->left->tank->position.x > root->right->tank->position.x && root->left != NULL && root->right != NULL) {
-            if (root->right->tank->position.x < root->tank->position.x) {
-                //left replaces right, right replaces left and root stays
-                root->left = childright;
-                root->right = childleft;
-                return root;
-            }
-            //left replaces right, right replaces root and root replaces left
-
-            //                          root
-            //                         /    \
-            //                      left    right
-            //                      a  b    c   d
-
-            root->left = childleft->left;
-            root->right = childleft->right;
-
-            //                         root         left     right
-            //                        /    \       /    \   /     \
-            //                       a      b     a      b c       d
-
-            childleft->left = childright->left;
-            childleft->right = childright->right;
-
-            //                         root         left     right
-            //                        /    \       /    \   /     \
-            //                       a      b     c      d c       d
-
-            childright->left = root;
-            childright->right = childleft;
-
-            //                              right
-            //                             /     \
-            //                         root       left   
-            //                        /    \     /    \  
-            //                       a      b   c      d 
-
-            return childright;
-        }
-        else if (root->left->tank->position.x > root->tank->position.x && root->left != NULL)
-        {
-            //left replaces root, right stays the same and root replaces left
-
-            root->left = childleft->left;
-            root->right = childleft->right;
-
-            childleft->left = root;
-            childleft->right = childright;
-
-            return childleft;
-        }
-        else if (root->right->tank->position.x < root->tank->position.x && root->right != NULL) {
-
-
-            root->left = childright->left;
-            root->right = childright->right;
-
-            childright->left = childleft;
-            childright->right = root;
-
-            return childright;
-        }
-    }
-    if (x == false) {
-        if (root->left->tank->position.y > root->right->tank->position.y && root->left != NULL && root->right != NULL) {
-            if (root->right->tank->position.y < root->tank->position.y) {
-                //left replaces right, right replaces left and root stays
-                root->left = childright;
-                root->right = childleft;
-                return root;
-            }
-            //left replaces right, right replaces root and root replaces left
-            root->left = childleft->left;
-            root->right = childleft->right;
-
-            childleft->left = childright->left;
-            childleft->right = childright->right;
-         
-            childright->left = root;
-            childright->right = childleft;
-
-            return childright;
-        }
-        else if (root->left->tank->position.y > root->tank->position.y && root->left != NULL)
-        {
-            //left replaces root, right stays the same and root replaces left
-
-            root->left = childleft->left;
-            root->right = childleft->right;
-
-            childleft->left = root;
-            childleft->right = childright;
-
-            return childleft;
-        }
-        else if (root->right->tank->position.y < root->tank->position.y && root->right != NULL) {
-            //left stays the same, right replaces root and root replaces right 
-
-            root->left = childright->left;
-            root->right = childright->right;
-
-            childright->left = childleft;
-            childright->right = root;
-
-
-            return childright;
-        }
-
-    }
-
-    return root;
-}
 
 // -----------------------------------------------------------
 // Initialize the simulation state
@@ -337,6 +260,7 @@ void Game::init()
     {
         vec2 position{ start_blue_x + ((i % max_rows) * spacing), start_blue_y + ((i / max_rows) * spacing) };
         tanks.push_back(Tank(position.x, position.y, BLUE, &tank_blue, &smoke, 1100.f, position.y + 16, tank_radius, tank_max_health, tank_max_speed));
+
     }
     //Spawn red tanks
     for (int i = 0; i < num_tanks_red; i++)
@@ -350,23 +274,26 @@ void Game::init()
     particle_beams.push_back(Particle_beam(vec2(1200, 600), vec2(100, 50), &particle_beam_sprite, particle_beam_hit_value));
 
     //initialise tree first get root tank aka middlest tank 
+    cout << (num_tanks_blue / 2) - 1 << std::endl;
+    cout << (num_tanks_red / 2) + num_tanks_blue - 1 << std::endl;
 
     Tank* Rootblue = &tanks[(num_tanks_blue / 2)-1];
     Tank* Rootred = &tanks[(num_tanks_red / 2)+ num_tanks_blue - 1];
 
-    rootBlue = insertnode(NULL,Rootblue,false,0);
-    rootRed = insertnode(NULL,Rootred,false,0);
+    rootBlue = inserttank(NULL,Rootblue,false,0);
+    rootRed = inserttank(NULL,Rootred,false,0);
 
-    for (Tank& t : tanks) {
-        if (t.allignment == BLUE) {
-            rootBlue = insertnode(rootBlue, &t,true,0);
+    for (int y = 0; y < tanks.size(); y++ ) {
+        if (tanks[y].allignment == BLUE) {
+           rootBlue = inserttank(rootBlue, &tanks[y], true, 0);
+
         }
-        if (t.allignment == RED) {
-            rootRed = insertnode(rootRed, &t, true,0);
+        if (tanks[y].allignment == RED) { 
+            rootRed = inserttank(rootRed, &tanks[y], true, 0);
         }
     }
 
-
+    cout << "Out of loop" << std::endl;
 }
 
 // -----------------------------------------------------------
@@ -387,12 +314,13 @@ Tank& Game::find_closest_enemy(Tank& current_tank)
     int closest_index = 0;
 
     if (current_tank.allignment == RED) {
-
+        return *searchClosest(rootBlue, current_tank)->tank;
     }    
     if (current_tank.allignment == BLUE) {
-
+        return *searchClosest(rootRed, current_tank)->tank;
     }
-
+    /*
+     
     for (int i = 0; i < tanks.size(); i++)
     {
         if (tanks.at(i).allignment != current_tank.allignment && tanks.at(i).active)
@@ -407,6 +335,9 @@ Tank& Game::find_closest_enemy(Tank& current_tank)
     }
 
     return tanks.at(closest_index);
+     
+    */
+
 }
 
 // -----------------------------------------------------------
@@ -669,20 +600,36 @@ void Game::update(float deltaTime)
         init_tank_routes();
     }
     
-
+    
     nudge_and_collide_tanks();
 
+    
     update_tanks();
-
+    
     update_smoke();
-
+    
     find_concave_hull();
     
     update_rockets();
-   
+    
     update_particle_beams();
-
+    
     update_explosions();    
+
+    
+    rootBlue = updateinsert(rootBlue, true, &tobesortedchilderen);
+   
+    for (node* nd : tobesortedchilderen) {
+        rootBlue = insertnode(rootBlue, nd, true, 0);
+    }
+    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
+
+    
+    rootRed = updateinsert(rootRed, true, &tobesortedchilderen);
+    for (node* nd : tobesortedchilderen) {
+        rootRed = insertnode(rootRed, nd, true, 0);
+    }
+    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
 }
 
 // -----------------------------------------------------------
