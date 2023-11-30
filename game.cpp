@@ -116,7 +116,7 @@ node* insertnode(node* root, node* newnode, bool x, int i) {
 
     //todo diepte interger for boom.
     //if x is true check on that level on the x-as otherwise check for y
-    if (x) {
+    if (x==true) {
         if (newnode->tank->position.x <= root->tank->position.x) {
             root->left = insertnode(root->left, newnode, false, i++);
             return root;
@@ -127,7 +127,7 @@ node* insertnode(node* root, node* newnode, bool x, int i) {
         }
     }
 
-    if (!x) {
+    if (x==false) {
         if (newnode->tank->position.y <= root->tank->position.y) {
             root->left = insertnode(root->left, newnode, true, i++);
             return root;
@@ -163,7 +163,6 @@ node* searchClosest(node* root, Tank tank) {
 
 }
 
-//TODO update the nodes and put it all in one class
 node* updateinsert(node* root, bool x, vector<node*>* tobesortedchilderen) {
 
     if (root->left != NULL && root->right != NULL) {
@@ -229,6 +228,37 @@ node* updateinsert(node* root, bool x, vector<node*>* tobesortedchilderen) {
     }
 
 }
+
+node* searchTankforRocketUpdate(node* root, Rocket& rocket, bool x, int i) {
+    cout << i << endl;
+    if (rocket.intersects(root->tank->position, root->tank->collision_radius))
+    {//because you need the first one to intersect you can start by checking the top and then going down
+        cout << "tank found at tree lvl : ";
+        cout << i << endl;
+        return root;
+    }
+    else if(x==true) {
+        i = i + 1;
+        if (rocket.position.x <= root->tank->position.x && root->left!=NULL)
+        {
+            return searchTankforRocketUpdate(root->left, rocket, !x, i);
+        }
+        else if (rocket.position.y > root->tank->position.y && root->right != NULL) {
+            return searchTankforRocketUpdate(root->right, rocket, !x, i);
+        }
+    }
+    else if (x == false) {
+        i = i + 1;
+        if (rocket.position.y <= root->tank->position.y && root->left != NULL)
+        {
+            return searchTankforRocketUpdate(root->left, rocket, !x, i);
+        }
+        else if (rocket.position.y > root->tank->position.y && root->right != NULL){
+            return searchTankforRocketUpdate(root->right, rocket, !x, i);
+        }
+    }
+
+}
 #pragma endregion
 
 
@@ -274,8 +304,6 @@ void Game::init()
     particle_beams.push_back(Particle_beam(vec2(1200, 600), vec2(100, 50), &particle_beam_sprite, particle_beam_hit_value));
 
     //initialise tree first get root tank aka middlest tank 
-    cout << (num_tanks_blue / 2) - 1 << std::endl;
-    cout << (num_tanks_red / 2) + num_tanks_blue - 1 << std::endl;
 
     Tank* Rootblue = &tanks[(num_tanks_blue / 2)-1];
     Tank* Rootred = &tanks[(num_tanks_red / 2)+ num_tanks_blue - 1];
@@ -293,7 +321,6 @@ void Game::init()
         }
     }
 
-    cout << "Out of loop" << std::endl;
 }
 
 // -----------------------------------------------------------
@@ -310,8 +337,8 @@ void Game::shutdown()
 // -----------------------------------------------------------
 Tank& Game::find_closest_enemy(Tank& current_tank)
 {
-    float closest_distance = numeric_limits<float>::infinity();
-    int closest_index = 0;
+    //float closest_distance = numeric_limits<float>::infinity();
+    //int closest_index = 0;
 
     if (current_tank.allignment == RED) {
         return *searchClosest(rootBlue, current_tank)->tank;
@@ -503,9 +530,33 @@ void Game::update_rockets() {
     for (Rocket& rocket : rockets)
     {
         rocket.tick();
+        
+        node* tree =NULL;
 
+        if (rocket.allignment == RED) {
+            tree = rootBlue;
+        }
+        else if (rocket.allignment == BLUE)
+        {
+            tree = rootRed;
+        }
+        
+        if (searchTankforRocketUpdate(tree, rocket, true,0) != NULL)
+        {
+            Tank* tank = searchTankforRocketUpdate(tree, rocket, true,0)->tank;
+
+            explosions.push_back(Explosion(&explosion, tank->position));
+
+            if (tank->hit(rocket_hit_value))
+            {
+                smokes.push_back(Smoke(smoke, tank->position - vec2(7, 24)));
+            }
+
+            rocket.active = false;
+            break;
+        }
         //Check if rocket collides with enemy tank, spawn explosion, and if tank is destroyed spawn a smoke plume
-        for (Tank& tank : tanks)
+        /*for (Tank& tank : tanks)
         {
             if (tank.active && (tank.allignment != rocket.allignment) && rocket.intersects(tank.position, tank.collision_radius))
             {
@@ -519,7 +570,8 @@ void Game::update_rockets() {
                 rocket.active = false;
                 break;
             }
-        }
+        }*/
+        
     }
 
     //Disable rockets if they collide with the "forcefield"
@@ -623,7 +675,6 @@ void Game::update(float deltaTime)
         rootBlue = insertnode(rootBlue, nd, true, 0);
     }
     tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
-
     
     rootRed = updateinsert(rootRed, true, &tobesortedchilderen);
     for (node* nd : tobesortedchilderen) {
