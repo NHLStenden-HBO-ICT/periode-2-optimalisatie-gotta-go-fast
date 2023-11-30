@@ -90,6 +90,8 @@ using namespace Tmpl8;
 #include "explosion.h"
 #include "particle_beam.h"
 
+#include "object_pool.h"
+
 #include "game.h"
 
 // clang-format on
