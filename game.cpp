@@ -54,6 +54,8 @@ vector<node*> tobesortedchilderen; //turn in vector
 //===========================================
 
 #pragma region Node/kdtree
+
+//TODO COMMENT 
 struct node
 {
     Tank* tank; //pointer to a tank
@@ -243,7 +245,7 @@ node* searchTankforRocketUpdate(node* root, Rocket& rocket, bool x, int i) {
         {
             return searchTankforRocketUpdate(root->left, rocket, !x, i);
         }
-        else if (rocket.position.y > root->tank->position.y && root->right != NULL) {
+        else if (rocket.position.x > root->tank->position.x && root->right != NULL) {
             return searchTankforRocketUpdate(root->right, rocket, !x, i);
         }
     }
@@ -257,11 +259,12 @@ node* searchTankforRocketUpdate(node* root, Rocket& rocket, bool x, int i) {
             return searchTankforRocketUpdate(root->right, rocket, !x, i);
         }
     }
+    else {
+        return NULL;
+    }
 
 }
 #pragma endregion
-
-
 
 // -----------------------------------------------------------
 // Initialize the simulation state
