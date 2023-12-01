@@ -8,6 +8,7 @@ class Rocket;
 class Smoke;
 class Particle_beam;
 
+
 class Game
 {
   public:

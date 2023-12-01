@@ -1,5 +1,6 @@
 #include "precomp.h" // include (only) this in every .cpp file
 
+
 constexpr auto num_tanks_blue = 2048;
 constexpr auto num_tanks_red = 2048;
 
@@ -41,10 +42,11 @@ const static vec2 rocket_size(6, 6);
 const static float tank_radius = 3.f;
 const static float rocket_radius = 5.f;
 
-struct node* rootBlue;
-struct node* rootRed;
+kdTree::node* rootBlue;
+kdTree::node* rootRed;
 
-vector<node*> tobesortedchilderen; 
+vector<kdTree::node*> tobesortedchilderen;
+kdTree tree;
 
 //===========================================
 // Main bottlenecks
@@ -53,226 +55,7 @@ vector<node*> tobesortedchilderen;
 // ~ update_tanks (n^2)
 //===========================================
 
-//todo entire region in class, need to ask how
-#pragma region Node/kdtree 
 
-// -----------------------------------------------------------
-// Initialize the node
-// contains a pointer to tank, pointer to its right and left child
-// -----------------------------------------------------------
-struct node
-{
-    Tank* tank; 
-    struct node* left;
-    struct node* right;
-
-};
-
-// -----------------------------------------------------------
-// Creates a new node
-// sets the tank 
-// -----------------------------------------------------------
- node* newnode(Tank* tank) {
-
-    struct node* node
-        = (struct node*)malloc(sizeof(struct node));
-
-    node->tank = tank;
-    node->left = NULL;
-    node->right = NULL;
-
-    return node;
-}
-
-node* inserttank(node* root, Tank* tank, bool x, int i) {
-    if (root == NULL) {
-        //cout << i << std::endl;
-        return newnode(tank);
-    }
-
-    i = i + 1;
-    if (x==true) {
-
-        if (tank->position.x <= root->tank->position.x) {
-            root->left = inserttank(root->left, tank, !x, i);
-            return root;
-        }
-        if (tank->position.x > root->tank->position.x) {
-            root->right = inserttank(root->right, tank, !x, i);
-            return root;
-        }
-    }
-
-    if (x==false) {
-        if (tank->position.y <= root->tank->position.y) {
-           
-            root->left = inserttank(root->left, tank, !x, i);
-            return root;
-        }
-        if (tank->position.y > root->tank->position.y) {
-
-            root->right = inserttank(root->right, tank, !x, i);
-            return root;
-        }
-    }
-
-}
-
-node* insertnode(node* root, node* newnode, bool x, int i) {
-
-    if (root == NULL) {
-        return newnode;
-    }
-
-    //todo diepte interger for boom.
-    //if x is true check on that level on the x-as otherwise check for y
-    if (x==true) {
-        if (newnode->tank->position.x <= root->tank->position.x) {
-            root->left = insertnode(root->left, newnode, false, i++);
-            return root;
-        }
-        if (newnode->tank->position.x > root->tank->position.x) {
-            root->right = insertnode(root->right, newnode, false, i++);
-            return root;
-        }
-    }
-
-    if (x==false) {
-        if (newnode->tank->position.y <= root->tank->position.y) {
-            root->left = insertnode(root->left, newnode, true, i++);
-            return root;
-        }
-        if (newnode->tank->position.y > root->tank->position.y) {
-            root->right = insertnode(root->right, newnode, true, i++);
-            return root;
-        }
-    }
-
-}
-
-node* searchClosest(node* root, Tank tank) {
-
-    //todo interger diepte
-    //check if left is shortest
-    if (root->left != NULL && fabsf((root->left->tank->get_position() - tank.get_position()).sqr_length()) < fabsf((root->tank->get_position() - tank.get_position()).sqr_length())) {
-        if (root->left->left == NULL && root->left->right == NULL) {
-            return root->left;
-        }
-        return searchClosest(root->left, tank);
-    }
-    //check if right is shortest
-    else if (root->right != NULL && fabsf((root->right->tank->get_position() - tank.get_position()).sqr_length()) < fabsf((root->tank->get_position() - tank.get_position()).sqr_length())) {
-        if (root->right->left == NULL && root->right->right == NULL) {
-            return root->right;
-        }
-        return searchClosest(root->right, tank);
-    }
-    else {
-        return root;
-    }
-
-}
-
-node* updateinsert(node* root, bool x, vector<node*>* tobesortedchilderen) {
-
-    if (root->left != NULL && root->right != NULL) {
-        
-        if (root->left->left != NULL || root->left->right != NULL) {
-            root->left = updateinsert(root->left, !x, tobesortedchilderen);
-        }
-        
-        if (root->left->tank->active == true) {
-            tobesortedchilderen->push_back(root->left);
-            
-        }
-
-        if (root->right->right != NULL || root->right->left != NULL) {
-            root->right = updateinsert(root->right, !x, tobesortedchilderen);
-        }
-        if (root->right->tank->active == true) {
-            tobesortedchilderen->push_back(root->right);
-            
-        }
-        root->left = NULL;
-        root->right = NULL;
-        
-        return root;
-
-    }
-
-    if (root->right == NULL && root->left != NULL) {
-        
-        if (root->left->left != NULL || root->left->right != NULL) {
-            root->left = updateinsert(root->left, !x, tobesortedchilderen);
-        }
-
-        if (root->left->tank->active == true) {
-            tobesortedchilderen->push_back(root->left);
-            
-        }
-        root->left = NULL;
-        
-        return root;
-    }
-
-    if (root->left == NULL && root->right != NULL) {
-        
-        if (root->right->right != NULL || root->right->left != NULL) {
-            root->right = updateinsert(root->right, !x, tobesortedchilderen);
-        }
-        if (root->right->tank->active == true) {
-            tobesortedchilderen->push_back(root->right);
-            
-        }
-        root->right = NULL;
-        
-        return root;
-    }
-
-    if (root->left == NULL && root->right == NULL && root->tank->active == true) {
-        cout << "root is active and needs to be added to list" << endl;
-        tobesortedchilderen->push_back(root);
-        node* newroot = tobesortedchilderen->at(tobesortedchilderen->size() - 1);
-
-        return tobesortedchilderen->at(tobesortedchilderen->size());
-    }
-
-}
-
-node* searchTankforRocketUpdate(node* root, Rocket& rocket, bool x, int i) {
-    cout << i << endl;
-    if (rocket.intersects(root->tank->position, root->tank->collision_radius))
-    {//because you need the first one to intersect you can start by checking the top and then going down
-        cout << "tank found at tree lvl : ";
-        cout << i << endl;
-        return root;
-    }
-    else if(x==true) {
-        i = i + 1;
-        if (rocket.position.x <= root->tank->position.x && root->left!=NULL)
-        {
-            return searchTankforRocketUpdate(root->left, rocket, !x, i);
-        }
-        else if (rocket.position.x > root->tank->position.x && root->right != NULL) {
-            return searchTankforRocketUpdate(root->right, rocket, !x, i);
-        }
-    }
-    else if (x == false) {
-        i = i + 1;
-        if (rocket.position.y <= root->tank->position.y && root->left != NULL)
-        {
-            return searchTankforRocketUpdate(root->left, rocket, !x, i);
-        }
-        else if (rocket.position.y > root->tank->position.y && root->right != NULL){
-            return searchTankforRocketUpdate(root->right, rocket, !x, i);
-        }
-    }
-    else {
-        return NULL;
-    }
-
-}
-#pragma endregion
 
 // -----------------------------------------------------------
 // Initialize the simulation state
@@ -281,6 +64,7 @@ node* searchTankforRocketUpdate(node* root, Rocket& rocket, bool x, int i) {
 // -----------------------------------------------------------
 void Game::init()
 {
+    tree = kdTree();
     frame_count_font = new Font("assets/digital_small.png", "ABCDEFGHIJKLMNOPQRSTUVWXYZ:?!=-0123456789.");
 
     tanks.reserve(num_tanks_blue + num_tanks_red);
@@ -319,16 +103,16 @@ void Game::init()
     Tank* Rootblue = &tanks[(num_tanks_blue / 2)-1];
     Tank* Rootred = &tanks[(num_tanks_red / 2)+ num_tanks_blue - 1];
 
-    rootBlue = inserttank(NULL,Rootblue,false,0);
-    rootRed = inserttank(NULL,Rootred,false,0);
+    rootBlue = tree.inserttank(NULL,Rootblue,false,0);
+    rootRed = tree.inserttank(NULL,Rootred,false,0);
 
     for (int y = 0; y < tanks.size(); y++ ) {
         if (tanks[y].allignment == BLUE) {
-           rootBlue = inserttank(rootBlue, &tanks[y], true, 0);
+           rootBlue = tree.inserttank(rootBlue, &tanks[y], true, 0);
 
         }
         if (tanks[y].allignment == RED) { 
-            rootRed = inserttank(rootRed, &tanks[y], true, 0);
+            rootRed = tree.inserttank(rootRed, &tanks[y], true, 0);
         }
     }
 
@@ -352,10 +136,10 @@ Tank& Game::find_closest_enemy(Tank& current_tank)
     //int closest_index = 0;
 
     if (current_tank.allignment == RED) {
-        return *searchClosest(rootBlue, current_tank)->tank;
+        return *tree.searchClosest(rootBlue, current_tank)->tank;
     }    
     if (current_tank.allignment == BLUE) {
-        return *searchClosest(rootRed, current_tank)->tank;
+        return *tree.searchClosest(rootRed, current_tank)->tank;
     }
     /*
      
@@ -475,7 +259,20 @@ void Game::find_concave_hull() {
     //Calculate "forcefield" around active tanks
     forcefield_hull.clear();
 
-    //Find first active tank (this loop is a bit disgusting, fix?)
+    /*
+    kdTree::node* leftred = tree.getmostlefttank(rootRed, true);
+    kdTree::node* leftblue = tree.getmostlefttank(rootBlue, true);
+
+    vec2 point_on_hull;
+    if (leftred->tank->position.x < leftblue->tank->position.x) {
+        point_on_hull = leftred->tank->position;
+    }
+    else 
+    {
+        point_on_hull = leftblue->tank->position;
+    }
+    */
+   //Find first active tank (this loop is a bit disgusting, fix?)
     int first_active = 0;
     for (Tank& tank : tanks)
     {
@@ -542,19 +339,20 @@ void Game::update_rockets() {
     {
         rocket.tick();
         
-        node* tree =NULL;
+        kdTree::node* root =NULL;
 
         if (rocket.allignment == RED) {
-            tree = rootBlue;
+            root = rootBlue;
         }
         else if (rocket.allignment == BLUE)
         {
-            tree = rootRed;
+            root = rootRed;
         }
+
+        Tank* tank = tree.searchClosest(root, rocket.position)->tank;
         
-        if (searchTankforRocketUpdate(tree, rocket, true,0) != NULL)
+        if (rocket.intersects(tank->position, tank->collision_radius))
         {
-            Tank* tank = searchTankforRocketUpdate(tree, rocket, true,0)->tank;
 
             explosions.push_back(Explosion(&explosion, tank->position));
 
@@ -564,25 +362,8 @@ void Game::update_rockets() {
             }
 
             rocket.active = false;
-            break;
         }
-        //Check if rocket collides with enemy tank, spawn explosion, and if tank is destroyed spawn a smoke plume
-        /*for (Tank& tank : tanks)
-        {
-            if (tank.active && (tank.allignment != rocket.allignment) && rocket.intersects(tank.position, tank.collision_radius))
-            {
-                explosions.push_back(Explosion(&explosion, tank.position));
 
-                if (tank.hit(rocket_hit_value))
-                {
-                    smokes.push_back(Smoke(smoke, tank.position - vec2(7, 24)));
-                }
-
-                rocket.active = false;
-                break;
-            }
-        }*/
-        
     }
 
     //Disable rockets if they collide with the "forcefield"
@@ -601,7 +382,6 @@ void Game::update_rockets() {
             }
         }
     }
-
 
 
     //Remove exploded rockets with remove erase idiom
@@ -665,10 +445,22 @@ void Game::update(float deltaTime)
     
     
     nudge_and_collide_tanks();
-
     
     update_tanks();
-    
+
+    rootBlue = tree.updateinsert(rootBlue, true, &tobesortedchilderen);
+
+    for (kdTree::node* nd : tobesortedchilderen) {
+        rootBlue = tree.insertnode(rootBlue, nd, true, 0);
+    }
+    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
+
+    rootRed = tree.updateinsert(rootRed, true, &tobesortedchilderen);
+    for (kdTree::node* nd : tobesortedchilderen) {
+        rootRed = tree.insertnode(rootRed, nd, true, 0);
+    }
+    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
+
     update_smoke();
     
     find_concave_hull();
@@ -680,18 +472,7 @@ void Game::update(float deltaTime)
     update_explosions();    
 
     
-    rootBlue = updateinsert(rootBlue, true, &tobesortedchilderen);
-   
-    for (node* nd : tobesortedchilderen) {
-        rootBlue = insertnode(rootBlue, nd, true, 0);
-    }
-    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
     
-    rootRed = updateinsert(rootRed, true, &tobesortedchilderen);
-    for (node* nd : tobesortedchilderen) {
-        rootRed = insertnode(rootRed, nd, true, 0);
-    }
-    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
 }
 
 // -----------------------------------------------------------
