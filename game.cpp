@@ -44,7 +44,7 @@ const static float rocket_radius = 5.f;
 struct node* rootBlue;
 struct node* rootRed;
 
-vector<node*> tobesortedchilderen; //turn in vector
+vector<node*> tobesortedchilderen; 
 
 //===========================================
 // Main bottlenecks
@@ -53,18 +53,26 @@ vector<node*> tobesortedchilderen; //turn in vector
 // ~ update_tanks (n^2)
 //===========================================
 
-#pragma region Node/kdtree
+//todo entire region in class, need to ask how
+#pragma region Node/kdtree 
 
-//TODO COMMENT 
+// -----------------------------------------------------------
+// Initialize the node
+// contains a pointer to tank, pointer to its right and left child
+// -----------------------------------------------------------
 struct node
 {
-    Tank* tank; //pointer to a tank
+    Tank* tank; 
     struct node* left;
     struct node* right;
 
 };
 
-struct node* newnode(Tank* tank) {
+// -----------------------------------------------------------
+// Creates a new node
+// sets the tank 
+// -----------------------------------------------------------
+ node* newnode(Tank* tank) {
 
     struct node* node
         = (struct node*)malloc(sizeof(struct node));
