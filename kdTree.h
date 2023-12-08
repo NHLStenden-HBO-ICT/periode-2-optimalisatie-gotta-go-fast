@@ -2,7 +2,7 @@
 
 namespace Tmpl8 {
     class Tank;
-
+    class Rocket;
 
      class kdTree
      {
@@ -27,11 +27,15 @@ namespace Tmpl8 {
 
         node* insertnode(node* root, node* newnode, bool x, int i);
 
+        node* insertnodes( vector<node*> list, bool x, bool left, int rootind, int parentind, int i);
+
         node* searchClosest(node* root, Tank tank);
 
         node* searchClosest(node* root, vec2 point);
 
-        node* getmostlefttank(node* root, bool x);
+        //node* rockethitsearch(node* root, Rocket* rocket);
+
+        //node* getmostlefttank(node* root, bool x);
 
         node* updateinsert(node* root, bool x, vector<node*>* tobesortedchilderen);
 

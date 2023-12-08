@@ -33,7 +33,7 @@ class Game
     void update_rockets();
     void update_particle_beams();
     void update_explosions();
-
+    vector<kdTree::node*> sortlist(vector<kdTree::node*> tobesortedchilderen);
 
     void mouse_up(int button)
     { /* implement if you want to detect mouse button presses */

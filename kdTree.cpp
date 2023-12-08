@@ -110,6 +110,76 @@ namespace Tmpl8 {
 
     }
 
+    //todo add the Y insert check
+    kdTree::node* kdTree::insertnodes(vector<node*> list, bool x, bool left, int rootind, int parentind, int i)
+    {
+        int medianindex;
+       
+        if (x == false) {
+            
+            if (parentind > rootind) {
+                if (left == true) {
+                    medianindex = parentind - ((parentind - rootind) / 2);
+                }
+                else {
+                    medianindex = ((parentind - rootind) / 2) + parentind;
+                }
+
+            }
+            else if(left == true) {
+                medianindex = ((parentind - rootind) / 2) + parentind;
+            }
+            else {
+                medianindex = ((rootind - parentind) / 2) + parentind;
+            }
+        }
+        else
+        {
+            if (parentind <= rootind) {
+                medianindex = parentind / 2;
+            }
+            else
+            {
+                medianindex = parentind - ((parentind - rootind) / 2) ;
+            }
+        }
+
+
+
+
+        node* median = list[medianindex];
+
+        i = i + 1;
+        
+        if ((x==true && parentind- medianindex == 1)|| left == true && parentind - medianindex == 1) {
+            return median;
+
+        }
+        else if (x == false && medianindex - parentind== 1)
+        {
+            return median;
+        }
+        else if((x == true && parentind - medianindex >= 2) || (x == false && medianindex - parentind >= 2) || (x == false&&left == true && parentind - medianindex >= 2)){
+            if (x==false) {
+                median->left = insertnodes(list, false, true, parentind, medianindex, i);
+
+                median->right = insertnodes(list, false, false, parentind, medianindex, i);
+            }
+            else {
+                median->left = insertnodes(list, true, true, parentind, medianindex, i);
+
+                median->right = insertnodes(list, false, false, parentind, medianindex, i);
+            }
+
+        }
+
+
+        if (i > 100) {
+            cout << i << endl;
+        }
+        return median;
+    }
+
     /// <summary>
     /// this searches the closest node tank to a tank.
     /// works itterative
@@ -120,19 +190,18 @@ namespace Tmpl8 {
     /// <returns>the node with the closest tank</returns>
     kdTree::node* kdTree::searchClosest(node* root, Tank tank) {
 
-        //todo interger diepte
-        //check if left is shortest
-        if (root->left != NULL && fabsf((root->left->tank->get_position() - tank.get_position()).sqr_length()) < fabsf((root->tank->get_position() - tank.get_position()).sqr_length())) {
-            if (root->left->left == NULL && root->left->right == NULL) {
-                return root->left;
+        if (root == NULL) {
+            return NULL;
+        }
+        //pow(2.0f, (root->tank->get_position().x - tank.get_position().x)) + pow(2.0f, (root->tank->get_position().y - tank.get_position().y))
+        if (root->left != NULL && pow(2.0f, (root->left->tank->get_position().x - tank.get_position().x)) + pow(2.0f, (root->left->tank->get_position().y - tank.get_position().y)) < pow(2.0f, (root->tank->get_position().x - tank.get_position().x)) + pow(2.0f, (root->tank->get_position().y - tank.get_position().y))) {
+            if (root->right != NULL && pow(2.0f, (root->right->tank->get_position().x - tank.get_position().x)) + pow(2.0f, (root->right->tank->get_position().y - tank.get_position().y)) < pow(2.0f, (root->left->tank->get_position().x - tank.get_position().x)) + pow(2.0f, (root->left->tank->get_position().y - tank.get_position().y)) ){
+                return searchClosest(root->right, tank);
             }
             return searchClosest(root->left, tank);
         }
-        //check if right is shortest
-        else if (root->right != NULL && fabsf((root->right->tank->get_position() - tank.get_position()).sqr_length()) < fabsf((root->tank->get_position() - tank.get_position()).sqr_length())) {
-            if (root->right->left == NULL && root->right->right == NULL) {
-                return root->right;
-            }
+        //check if right is shortest as long as left is not shorter than root
+        else if (root->right != NULL && pow(2.0f, (root->right->tank->get_position().x - tank.get_position().x)) + pow(2.0f, (root->right->tank->get_position().y - tank.get_position().y)) < pow(2.0f, (root->tank->get_position().x - tank.get_position().x)) + pow(2.0f, (root->tank->get_position().y - tank.get_position().y))) {
             return searchClosest(root->right, tank);
         }
         else {
@@ -140,7 +209,7 @@ namespace Tmpl8 {
         }
 
     }
-
+    
     /// <summary>
     /// this searches the closest node tank to a certainpoint.
     /// works itterative
@@ -150,71 +219,18 @@ namespace Tmpl8 {
     /// <param name="point"> the point which is being compared to </param>
     /// <returns>the node with the closest tank</returns>
     kdTree::node* kdTree::searchClosest(node* root, vec2 point) {
-
-        //check if left is shortest
-        if (root->left != NULL && fabsf((root->left->tank->get_position() - point).sqr_length()) < fabsf((root->tank->get_position() - point).sqr_length())) {
-            if (root->left->left == NULL && root->left->right == NULL) {
-                return root->left;
+            if (root->left != NULL && fabsf((root->left->tank->get_position() - point).sqr_length()) < fabsf((root->tank->get_position() - point).sqr_length())) {
+            if (root->right != NULL && fabsf((root->right->tank->get_position() - point).sqr_length()) < fabsf((root->left->tank->get_position() - point).sqr_length())){
+                return searchClosest(root->right, point);
             }
             return searchClosest(root->left, point);
         }
-        //check if right is shortest
+        //check if right is shortest as long as left is not shorter than root
         else if (root->right != NULL && fabsf((root->right->tank->get_position() - point).sqr_length()) < fabsf((root->tank->get_position() - point).sqr_length())) {
-            if (root->right->left == NULL && root->right->right == NULL) {
-                return root->right;
-            }
             return searchClosest(root->right, point);
         }
         else {
             return root;
-        }
-
-    }
-
-    /// <summary>
-    /// get the most left tank that exist by checking all left
-    /// usefull for the hull check
-    /// </summary>
-    /// <param name="root">pointer to the root of the tree</param>
-    /// <param name="x">bool of the axis</param>
-    /// <returns>the node thats most left</returns>
-    kdTree::node* kdTree::getmostlefttank(node* root, bool x)
-    {
-        if (x==true) //split on y ax
-        {
-            if (root->left == NULL){
-                return root;
-            }
-            return getmostlefttank(root->left,!x);
-        }
-        else if(x == false){ //split on x ax
-            if (root->right ==NULL&& root->left==NULL)
-            {
-                return root;
-            }
-            else if (root->right == NULL && root->left != NULL)
-            {
-                return getmostlefttank(root->left, !x);;
-            }            
-            else if (root->right != NULL && root->left == NULL)
-            {
-                return getmostlefttank(root->right, !x);
-            }
-            else
-            {
-                node* right = getmostlefttank(root->right, !x);
-                node* left = getmostlefttank(root->left, !x);
-
-                if (right->tank->position.x < left->tank->position.x) { 
-                    //check if the x of right is smaller then left if so right is the most left of the two.
-                    return right;
-                }
-                else
-                {
-                    return left;
-                }
-            }
-            
         }
 
     }
@@ -227,21 +243,24 @@ namespace Tmpl8 {
     /// <param name="tobesortedchilderen">a pointer to the vector that allows for sorting</param>
     /// <returns>returns the new root of the tree</returns>
     kdTree::node* kdTree::updateinsert(node* root, bool x, vector<node*>* tobesortedchilderen) {
+        if (root == NULL) {
+            return NULL;
+        }
 
         if (root->left != NULL && root->right != NULL) {
 
             if (root->left->left != NULL || root->left->right != NULL) {
                 root->left = updateinsert(root->left, !x, tobesortedchilderen);
             }
-
+            
             if (root->left->tank->active == true) {
                 tobesortedchilderen->push_back(root->left);
-
             }
 
             if (root->right->right != NULL || root->right->left != NULL) {
                 root->right = updateinsert(root->right, !x, tobesortedchilderen);
             }
+            
             if (root->right->tank->active == true) {
                 tobesortedchilderen->push_back(root->right);
 
@@ -258,7 +277,7 @@ namespace Tmpl8 {
             if (root->left->left != NULL || root->left->right != NULL) {
                 root->left = updateinsert(root->left, !x, tobesortedchilderen);
             }
-
+            
             if (root->left->tank->active == true) {
                 tobesortedchilderen->push_back(root->left);
 
@@ -273,6 +292,7 @@ namespace Tmpl8 {
             if (root->right->right != NULL || root->right->left != NULL) {
                 root->right = updateinsert(root->right, !x, tobesortedchilderen);
             }
+            
             if (root->right->tank->active == true) {
                 tobesortedchilderen->push_back(root->right);
 
@@ -283,12 +303,107 @@ namespace Tmpl8 {
         }
 
         if (root->left == NULL && root->right == NULL && root->tank->active == true) {
-            cout << "root is active and needs to be added to list" << endl;
+            //cout << "root is active and needs to be added to list" << endl;
             tobesortedchilderen->push_back(root);
             node* newroot = tobesortedchilderen->at(tobesortedchilderen->size() - 1);
 
-            return tobesortedchilderen->at(tobesortedchilderen->size());
+            return tobesortedchilderen->at(tobesortedchilderen->size()-1);
         }
 
     }
+    /* Backup
+    *    kdTree::node* kdTree::insertnode(vector<node*> nodelist,int parentindex, int rootindex, bool left, int i)
+    {
+        int medianindex;
+        
+        if (parentindex > rootindex) {
+
+            if (left == false) {
+                medianindex = ((parentindex - rootindex) / 2) + parentindex;
+            }
+            else
+            {
+                medianindex = parentindex - ((parentindex - rootindex) / 2);
+            }
+        }
+        else
+        {
+            medianindex = (parentindex / 2);
+        }
+        cout << medianindex;
+        node* median = nodelist[medianindex];
+
+        if (nodelist.size() == 2) {
+            median->left = insertnode(nodelist, medianindex, rootindex,true,i++);
+            
+        }
+        else if (nodelist.size() > 2)
+        {
+            median->left = insertnode(nodelist, medianindex, rootindex, true, i++);
+
+            median->right = insertnode(nodelist, medianindex,rootindex, false, i++);
+        }
+
+        return median;
+    }
+    /// <summary>
+    /// currently checks for each node if they intersect.
+    /// </summary>
+    /// <param name="root"></param>
+    /// <param name="rocket"></param>
+    /// <returns></returns>
+    kdTree::node* kdTree::rockethitsearch(node* root, Rocket* rocket) {
+
+        if (rocket->intersects(root->tank->position, root->tank->collision_radius)) {//check if root intersects with rocket
+            
+            return root;
+        }
+        else //if root does not check the childeren
+        {
+            float roottorocketpos = fabsf((root->tank->get_position() - rocket->position).sqr_length());
+
+            if (root->left != NULL){ //start with checking if left exists
+
+                float lefttorocketpos = fabsf((root->left->tank->get_position() - rocket->position).sqr_length());
+                if (root->right != NULL) {//check if right exists
+
+                    float righttorocketpos = fabsf((root->right->tank->get_position() - rocket->position).sqr_length());
+                    if (lefttorocketpos< roottorocketpos && righttorocketpos > roottorocketpos ){ //check if the lenght between left and rocket is smaller than root and rocket but greater than right and rocket.
+
+                    }
+
+
+                }
+                else //if right doesn't exist
+                {
+                    node* node = rockethitsearch(root->left, rocket);
+                    if (node != NULL)
+                    {
+                        return node;
+                    }
+                }
+            }
+
+            if (root->right != NULL) {
+                node* node = rockethitsearch(root->right, rocket);
+
+                if (node!= NULL)
+                {
+                    return node;
+                }
+                else
+                {
+                    if (root->left != NULL) {
+                        return rockethitsearch(root->left, rocket);
+                    }
+                } 
+            }
+            return NULL; //no intersecting tank
+
+        }
+
+    }
+    */
+
+
 }

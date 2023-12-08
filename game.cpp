@@ -15,7 +15,7 @@ constexpr auto health_bar_width = 70;
 constexpr auto max_frames = 2000;
 
 //Global performance timer
-constexpr auto REF_PERFORMANCE = 94653; //UPDATE THIS WITH YOUR REFERENCE PERFORMANCE (see console after 2k frames)
+constexpr auto REF_PERFORMANCE = 157596; //UPDATE THIS WITH YOUR REFERENCE PERFORMANCE (see console after 2k frames)
 static timer perf_timer;
 static float duration;
 
@@ -259,19 +259,7 @@ void Game::find_concave_hull() {
     //Calculate "forcefield" around active tanks
     forcefield_hull.clear();
 
-    /*
-    kdTree::node* leftred = tree.getmostlefttank(rootRed, true);
-    kdTree::node* leftblue = tree.getmostlefttank(rootBlue, true);
 
-    vec2 point_on_hull;
-    if (leftred->tank->position.x < leftblue->tank->position.x) {
-        point_on_hull = leftred->tank->position;
-    }
-    else 
-    {
-        point_on_hull = leftblue->tank->position;
-    }
-    */
    //Find first active tank (this loop is a bit disgusting, fix?)
     int first_active = 0;
     for (Tank& tank : tanks)
@@ -338,30 +326,21 @@ void Game::update_rockets() {
     for (Rocket& rocket : rockets)
     {
         rocket.tick();
-        
-        kdTree::node* root =NULL;
 
-        if (rocket.allignment == RED) {
-            root = rootBlue;
-        }
-        else if (rocket.allignment == BLUE)
+        for (Tank& tank : tanks)
         {
-            root = rootRed;
-        }
-
-        Tank* tank = tree.searchClosest(root, rocket.position)->tank;
-        
-        if (rocket.intersects(tank->position, tank->collision_radius))
-        {
-
-            explosions.push_back(Explosion(&explosion, tank->position));
-
-            if (tank->hit(rocket_hit_value))
+            if (tank.active && (tank.allignment != rocket.allignment) && rocket.intersects(tank.position, tank.collision_radius))
             {
-                smokes.push_back(Smoke(smoke, tank->position - vec2(7, 24)));
-            }
+                explosions.push_back(Explosion(&explosion, tank.position));
 
-            rocket.active = false;
+                if (tank.hit(rocket_hit_value))
+                {
+                    smokes.push_back(Smoke(smoke, tank.position - vec2(7, 24)));
+                }
+
+                rocket.active = false;
+                break;
+            }
         }
 
     }
@@ -448,17 +427,22 @@ void Game::update(float deltaTime)
     
     update_tanks();
 
-    rootBlue = tree.updateinsert(rootBlue, true, &tobesortedchilderen);
+    rootBlue = tree.updateinsert(rootBlue, true, &tobesortedchilderen);//TODO clean and better
 
-    for (kdTree::node* nd : tobesortedchilderen) {
-        rootBlue = tree.insertnode(rootBlue, nd, true, 0);
-    }
+    tobesortedchilderen = sortlist(tobesortedchilderen); //TODO add to update insert
+
+    rootBlue = tree.insertnodes(tobesortedchilderen, true,true, tobesortedchilderen.size() - 1, tobesortedchilderen.size() - 1, 0);
+
+    cout << tobesortedchilderen.size() << endl;
     tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
 
     rootRed = tree.updateinsert(rootRed, true, &tobesortedchilderen);
-    for (kdTree::node* nd : tobesortedchilderen) {
-        rootRed = tree.insertnode(rootRed, nd, true, 0);
-    }
+
+    tobesortedchilderen = sortlist(tobesortedchilderen);
+
+    rootRed = tree.insertnodes(tobesortedchilderen, true, true, tobesortedchilderen.size() - 1, 0, 0);
+
+    cout << tobesortedchilderen.size() << endl;
     tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
 
     update_smoke();
@@ -473,6 +457,30 @@ void Game::update(float deltaTime)
 
     
     
+}
+
+
+vector<kdTree::node*> Game::sortlist(vector<kdTree::node*> tobesortedchilderen) {
+
+    for (int i = 0; i < tobesortedchilderen.size(); i++) {
+        kdTree::node* current_node = tobesortedchilderen[i];
+
+        for (int s = i - 1; s >= 0; s--)
+        {
+            kdTree::node* checking_node = tobesortedchilderen[s];
+
+            if (checking_node->tank->position.x <= checking_node->tank->position.x) {
+                tobesortedchilderen.at(s) = current_node;
+                tobesortedchilderen.at(s + 1) = checking_node;
+            }
+            else {
+                break;
+            }
+        }
+
+    }
+
+    return tobesortedchilderen;
 }
 
 // -----------------------------------------------------------
