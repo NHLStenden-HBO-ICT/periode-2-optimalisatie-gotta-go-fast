@@ -115,21 +115,22 @@ namespace Tmpl8 {
     /// TODO might be the wrong part
     /// 
     /// </summary>
-    /// <param name="list"></param>
-    /// <param name="x"></param>
-    /// <param name="left"></param>
-    /// <param name="rootind"></param>
-    /// <param name="parentind"></param>
-    /// <param name="i"></param>
-    /// <returns></returns>
+    /// <param name="list"> the entire list of tanks from which the tree will be built</param>
+    /// <param name="x">a bool that determines whether we are at the left or right side of the parent</param>
+    /// <param name="left">a bool that determines whether we are at the left or right side of the root</param>
+    /// <param name="rootind">the id of the root</param>
+    /// <param name="parentind">the id of the parent</param>
+    /// <param name="i"> the depth of the tree at whgich the function takes place</param>
+    /// <returns>the root node of the entire tree</returns>
     kdTree::node* kdTree::insertnodes(vector<node*> list, bool x, bool left, int rootind, int parentind, int i)
     {
         int medianindex;
        
-        if (x == false) {
+        //calculations of the medianindex
+        if (x == false) { //if the median is on right from parent
             
             if (parentind > rootind) {
-                if (left == true) {
+                if (left == true) {//if median is left from root
                     medianindex = parentind - ((parentind - rootind) / 2);
                 }
                 else {
@@ -137,7 +138,7 @@ namespace Tmpl8 {
                 }
 
             }
-            else if(left == true) {
+            else if(left == true) { // if median is right from root
                 medianindex = ((parentind - rootind) / 2) + parentind;
             }
             else {
@@ -160,29 +161,25 @@ namespace Tmpl8 {
 
         i = i + 1;
         
-        if ((x==true && parentind- medianindex == 1)|| left == true && parentind - medianindex == 1) {
-            return median;
-
-        }
-        else if (x == false && medianindex - parentind== 1)
-        {
-            return median;
+        if ((x==true && parentind- medianindex == 1) || left == true && parentind - medianindex == 1 || x == false && medianindex - parentind == 1) {
+            //if the medianindex difference between parent is equal to 1 return median.
+            return median;  
         }
         else if((x == true && parentind - medianindex >= 2) || (x == false && medianindex - parentind >= 2) || (x == false&&left == true && parentind - medianindex >= 2)){
-            if (x==false) {
+            if (x==false) { //is right of root
                 median->left = insertnodes(list, false, true, parentind, medianindex, i);
 
                 median->right = insertnodes(list, false, false, parentind, medianindex, i);
             }
-            else {
-                median->left = insertnodes(list, true, true, parentind, medianindex, i);
+            else {//is left of root
+                median->left = insertnodes(list, true, true, parentind, medianindex, i); 
 
                 median->right = insertnodes(list, false, false, parentind, medianindex, i);
             }
 
         }
 
-        return median;
+        return median; //return the median when all the kids are done.
     }
 
     kdTree::node* kdTree::inserttanks(vector<Tank*> list, bool x, bool left, int rootind, int parentind, int i)
