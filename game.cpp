@@ -100,21 +100,29 @@ void Game::init()
 
     //initialise tree first get root tank aka middlest tank 
 
-    Tank* Rootblue = &tanks[(num_tanks_blue / 2)-1];
-    Tank* Rootred = &tanks[(num_tanks_red / 2)+ num_tanks_blue - 1];
-
-    rootBlue = tree.inserttank(NULL,Rootblue,false,0);
-    rootRed = tree.inserttank(NULL,Rootred,false,0);
+    vector<Tank*> bluelist;
+    vector<Tank*> redlist;
 
     for (int y = 0; y < tanks.size(); y++ ) {
         if (tanks[y].allignment == BLUE) {
-           rootBlue = tree.inserttank(rootBlue, &tanks[y], true, 0);
-
+           bluelist.push_back(&tanks[y]);
         }
         if (tanks[y].allignment == RED) { 
-            rootRed = tree.inserttank(rootRed, &tanks[y], true, 0);
+            redlist.push_back(&tanks[y]);
         }
     }
+
+    rootBlue = tree.inserttanks(bluelist, true,true,bluelist.size()-1, bluelist.size() - 1,0);
+    cout << bluelist.size() - 1 << endl;
+    tobesortedchilderen = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen, 0, true);
+
+    cout << tobesortedchilderen.size() - 1 << endl;
+
+    rootRed = tree.inserttanks(redlist, true,true, redlist.size()-1, redlist.size() - 1,0);
+    cout << redlist.size() - 1 << endl;
+    tobesortedchilderen = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen, 0, true);
+
+    cout << tobesortedchilderen.size() - 1 << endl;
 
 }
 
@@ -136,10 +144,10 @@ Tank& Game::find_closest_enemy(Tank& current_tank)
     //int closest_index = 0;
 
     if (current_tank.allignment == RED) {
-        return *tree.searchClosest(rootBlue, current_tank)->tank;
+        return *tree.searchClosest(rootBlue, current_tank,0)->tank;
     }    
     if (current_tank.allignment == BLUE) {
-        return *tree.searchClosest(rootRed, current_tank)->tank;
+        return *tree.searchClosest(rootRed, current_tank,0)->tank;
     }
     /*
      
@@ -422,29 +430,51 @@ void Game::update(float deltaTime)
         init_tank_routes();
     }
     
-    
     nudge_and_collide_tanks();
     
     update_tanks();
 
-    rootBlue = tree.updateinsert(rootBlue, true, &tobesortedchilderen);//TODO clean and better
 
+    cout << "root blue update before" << endl;
+    tobesortedchilderen = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen,0,true);
+
+    cout << tobesortedchilderen.size() - 1 << endl;
+
+    rootBlue = tree.insertnodes(tobesortedchilderen, true, true, tobesortedchilderen.size() - 1, tobesortedchilderen.size() - 1, 0);
+
+    cout << "root blue update after" << endl;
+    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
+
+
+    cout << "root red update before" << endl;
+    tobesortedchilderen = *tree.get_tobe_sortedlist(rootRed, &tobesortedchilderen,0, true);
+
+    cout << tobesortedchilderen.size() - 1 << endl;
+
+    rootRed = tree.insertnodes(tobesortedchilderen, true, true, tobesortedchilderen.size() - 1, tobesortedchilderen.size() - 1, 0);
+
+    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
+    cout << "root red return after" << endl;
+
+    /*
+    cout << "root blue update before" << endl;
+    rootBlue = tree.updateinsert(rootBlue, true, &tobesortedchilderen);//TODO clean and better?
+    cout << tobesortedchilderen.size() - 1 << endl;
+    cout << "sort list before" << endl;
     tobesortedchilderen = sortlist(tobesortedchilderen); //TODO add to update insert
-
-    rootBlue = tree.insertnodes(tobesortedchilderen, true,true, tobesortedchilderen.size() - 1, tobesortedchilderen.size() - 1, 0);
-
-    cout << tobesortedchilderen.size() << endl;
+    cout << "insertnodes before" << endl;
+    rootBlue = tree.insertnodes(tobesortedchilderen, true,true, tobesortedchilderen.size() - 1, tobesortedchilderen.size() - 1, 0); 
+    cout << "insertnodes after" << endl;
     tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
-
+    cout << "root red update before" << endl;
     rootRed = tree.updateinsert(rootRed, true, &tobesortedchilderen);
-
+    cout << "sort list before" << endl;
     tobesortedchilderen = sortlist(tobesortedchilderen);
-
-    rootRed = tree.insertnodes(tobesortedchilderen, true, true, tobesortedchilderen.size() - 1, 0, 0);
-
-    cout << tobesortedchilderen.size() << endl;
+    cout << "insertnodes before" << endl;
+    rootRed = tree.insertnodes(tobesortedchilderen, true, true, tobesortedchilderen.size() - 1, tobesortedchilderen.size() - 1, 0);
+    cout << "insertnodes after" << endl;
     tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
-
+    */
     update_smoke();
     
     find_concave_hull();

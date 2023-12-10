@@ -109,8 +109,19 @@ namespace Tmpl8 {
         }
 
     }
+    
 
-    //todo add the Y insert check
+    /// <summary>
+    /// TODO might be the wrong part
+    /// 
+    /// </summary>
+    /// <param name="list"></param>
+    /// <param name="x"></param>
+    /// <param name="left"></param>
+    /// <param name="rootind"></param>
+    /// <param name="parentind"></param>
+    /// <param name="i"></param>
+    /// <returns></returns>
     kdTree::node* kdTree::insertnodes(vector<node*> list, bool x, bool left, int rootind, int parentind, int i)
     {
         int medianindex;
@@ -145,8 +156,6 @@ namespace Tmpl8 {
         }
 
 
-
-
         node* median = list[medianindex];
 
         i = i + 1;
@@ -173,36 +182,125 @@ namespace Tmpl8 {
 
         }
 
+        return median;
+    }
 
-        if (i > 100) {
-            cout << i << endl;
+    kdTree::node* kdTree::inserttanks(vector<Tank*> list, bool x, bool left, int rootind, int parentind, int i)
+    {
+        int medianindex;
+
+        if (x == false) {
+
+            if (parentind > rootind) {
+                if (left == true) {
+                    medianindex = parentind - ((parentind - rootind) / 2);
+                }
+                else {
+                    medianindex = ((parentind - rootind) / 2) + parentind;
+                }
+
+            }
+            else if (left == true) {
+                medianindex = ((parentind - rootind) / 2) + parentind;
+            }
+            else {
+                medianindex = ((rootind - parentind) / 2) + parentind;
+            }
         }
+        else
+        {
+            if (parentind <= rootind) {
+                medianindex = parentind / 2;
+            }
+            else
+            {
+                medianindex = parentind - ((parentind - rootind) / 2);
+            }
+        }
+
+
+        node* median = newnode(list[medianindex]);;
+
+        i = i + 1;
+
+        if ((x == true && parentind - medianindex == 1) || left == true && parentind - medianindex == 1) {
+            return median;
+
+        }
+        else if (x == false && medianindex - parentind == 1)
+        {
+            return median;
+        }
+        else if ((x == true && parentind - medianindex >= 2) || (x == false && medianindex - parentind >= 2) || (x == false && left == true && parentind - medianindex >= 2)) {
+            if (x == false) {
+                median->left = inserttanks(list, false, true, parentind, medianindex, i);
+
+                median->right = inserttanks(list, false, false, parentind, medianindex, i);
+            }
+            else {
+                median->left = inserttanks(list, true, true, parentind, medianindex, i);
+
+                median->right = inserttanks(list, false, false, parentind, medianindex, i);
+            }
+
+        }
+
         return median;
     }
 
     /// <summary>
-    /// this searches the closest node tank to a tank.
-    /// works itterative
-    /// TODO change sqr to just a^2+b^2
+    /// it searches for the closest node to tank, using an itterative style.
+    /// it does so by first checking if root is not null.
+    /// it then checks if its at a even or uneven depth.
+    /// even depths means its getting checked on the x axis
+    /// on uneven depths its getting checked on y axis.
     /// </summary>
-    /// <param name="root"> a pointer to a root</param>
-    /// <param name="tank"> the tank which is being compared to </param>
-    /// <returns>the node with the closest tank</returns>
-    kdTree::node* kdTree::searchClosest(node* root, Tank tank) {
+    /// <param name="root">root node of the tree</param>
+    /// <param name="tank">the tank of which its position is used to see which node is closest</param>
+    /// <param name="i">the currrent depth of the tree</param>
+    /// <returns>the node that is the closest</returns>
+    kdTree::node* kdTree::searchClosest(node* root, Tank tank, int i) {
+
+        float roottopoint;
+        float lefttopoint;
+        float righttopoint;
 
         if (root == NULL) {
             return NULL;
         }
-        //pow(2.0f, (root->tank->get_position().x - tank.get_position().x)) + pow(2.0f, (root->tank->get_position().y - tank.get_position().y))
-        if (root->left != NULL && pow(2.0f, (root->left->tank->get_position().x - tank.get_position().x)) + pow(2.0f, (root->left->tank->get_position().y - tank.get_position().y)) < pow(2.0f, (root->tank->get_position().x - tank.get_position().x)) + pow(2.0f, (root->tank->get_position().y - tank.get_position().y))) {
-            if (root->right != NULL && pow(2.0f, (root->right->tank->get_position().x - tank.get_position().x)) + pow(2.0f, (root->right->tank->get_position().y - tank.get_position().y)) < pow(2.0f, (root->left->tank->get_position().x - tank.get_position().x)) + pow(2.0f, (root->left->tank->get_position().y - tank.get_position().y)) ){
-                return searchClosest(root->right, tank);
+
+        //if i aka the depth is even that means the check happens on x axis, otherwise it happens on the y axis
+        if (i%2==0) {
+            roottopoint = pow(2.0f, (root->tank->get_position().x - tank.get_position().x));
+            if (root->left != NULL) {
+                lefttopoint = pow(2.0f, (root->left->tank->get_position().x - tank.get_position().x));
             }
-            return searchClosest(root->left, tank);
+            if (root->right != NULL) {
+                righttopoint = pow(2.0f, (root->right->tank->get_position().x - tank.get_position().x));
+            }
+        }
+        else
+        {
+            roottopoint = pow(2.0f, root->tank->get_position().y - tank.get_position().y);
+            if (root->left != NULL) {
+                lefttopoint = pow(2.0f, (root->left->tank->get_position().y - tank.get_position().y));
+            }
+            if (root->right != NULL) {
+                righttopoint = pow(2.0f, (root->right->tank->get_position().y - tank.get_position().y));
+            }
+        }
+        
+        i = i + 1; //add 1`to depth
+        if (root->left != NULL && lefttopoint < roottopoint) {
+            if (root->right != NULL && righttopoint < lefttopoint){
+                
+                return searchClosest(root->right, tank,i);
+            }
+            return searchClosest(root->left, tank,i);
         }
         //check if right is shortest as long as left is not shorter than root
-        else if (root->right != NULL && pow(2.0f, (root->right->tank->get_position().x - tank.get_position().x)) + pow(2.0f, (root->right->tank->get_position().y - tank.get_position().y)) < pow(2.0f, (root->tank->get_position().x - tank.get_position().x)) + pow(2.0f, (root->tank->get_position().y - tank.get_position().y))) {
-            return searchClosest(root->right, tank);
+        else if (root->right != NULL && righttopoint < roottopoint) {
+            return searchClosest(root->right, tank,i);
         }
         else {
             return root;
@@ -235,82 +333,68 @@ namespace Tmpl8 {
 
     }
 
-    /// <summary>
-    /// the sort/update function for the kd tree
-    /// </summary>
-    /// <param name="root">the </param>
-    /// <param name="x">a bool that determines whether the splitting happens on the x or y axis. </param>
-    /// <param name="tobesortedchilderen">a pointer to the vector that allows for sorting</param>
-    /// <returns>returns the new root of the tree</returns>
-    kdTree::node* kdTree::updateinsert(node* root, bool x, vector<node*>* tobesortedchilderen) {
+    vector<kdTree::node*>* kdTree::get_tobe_sortedlist(node* root, vector<node*>* tobesortedchilderen, int i, bool left)
+    {
         if (root == NULL) {
             return NULL;
         }
 
-        if (root->left != NULL && root->right != NULL) {
 
-            if (root->left->left != NULL || root->left->right != NULL) {
-                root->left = updateinsert(root->left, !x, tobesortedchilderen);
-            }
-            
-            if (root->left->tank->active == true) {
-                tobesortedchilderen->push_back(root->left);
-            }
-
-            if (root->right->right != NULL || root->right->left != NULL) {
-                root->right = updateinsert(root->right, !x, tobesortedchilderen);
-            }
-            
-            if (root->right->tank->active == true) {
-                tobesortedchilderen->push_back(root->right);
-
-            }
+        if (root->left != NULL) {
+            node* backup = root->left;
             root->left = NULL;
+            i = i + 1;
+            tobesortedchilderen = get_tobe_sortedlist(backup, tobesortedchilderen,i,true);
+        }
+
+        if (root->right != NULL) {
+            node* backup = root->right;
             root->right = NULL;
-
-            return root;
-
+            i = i + 1;
+            tobesortedchilderen = get_tobe_sortedlist(backup, tobesortedchilderen,i,false);
         }
 
-        if (root->right == NULL && root->left != NULL) {
-
-            if (root->left->left != NULL || root->left->right != NULL) {
-                root->left = updateinsert(root->left, !x, tobesortedchilderen);
+        //cout << i << endl;
+        
+        if (root->tank->active == true)
+        {
+            if (tobesortedchilderen->size()<=0) {
+                tobesortedchilderen->push_back(root);
+                return tobesortedchilderen;
             }
-            
-            if (root->left->tank->active == true) {
-                tobesortedchilderen->push_back(root->left);
 
+            int maxindex = tobesortedchilderen->size() - 1;
+
+
+            for (int s = maxindex; s >= 0; s--)
+            {
+                node* checking_node = tobesortedchilderen->at(s);
+
+                if (root->tank->position.x <= checking_node->tank->position.x) {
+                    if (s + 1 > maxindex) {
+                        tobesortedchilderen->at(s) = root;
+                        tobesortedchilderen->push_back(checking_node);
+                        maxindex = tobesortedchilderen->size() - 1;
+
+                    }
+                    else
+                    {
+                        tobesortedchilderen->at(s) = root;
+                        tobesortedchilderen->at(s + 1) = checking_node;
+                    }
+                }
+                else {
+                    if (s + 1 > maxindex) {
+                        tobesortedchilderen->push_back(root);
+                    }
+                    break;
+                }
             }
-            root->left = NULL;
-
-            return root;
         }
 
-        if (root->left == NULL && root->right != NULL) {
-
-            if (root->right->right != NULL || root->right->left != NULL) {
-                root->right = updateinsert(root->right, !x, tobesortedchilderen);
-            }
-            
-            if (root->right->tank->active == true) {
-                tobesortedchilderen->push_back(root->right);
-
-            }
-            root->right = NULL;
-
-            return root;
-        }
-
-        if (root->left == NULL && root->right == NULL && root->tank->active == true) {
-            //cout << "root is active and needs to be added to list" << endl;
-            tobesortedchilderen->push_back(root);
-            node* newroot = tobesortedchilderen->at(tobesortedchilderen->size() - 1);
-
-            return tobesortedchilderen->at(tobesortedchilderen->size()-1);
-        }
-
+        return tobesortedchilderen;
     }
+
     /* Backup
     *    kdTree::node* kdTree::insertnode(vector<node*> nodelist,int parentindex, int rootindex, bool left, int i)
     {

@@ -29,9 +29,13 @@ namespace Tmpl8 {
 
         node* insertnodes( vector<node*> list, bool x, bool left, int rootind, int parentind, int i);
 
-        node* searchClosest(node* root, Tank tank);
+        node* inserttanks( vector<Tank*> list, bool x, bool left, int rootind, int parentind, int i);
+
+        node* searchClosest(node* root, Tank tank, int i);
 
         node* searchClosest(node* root, vec2 point);
+
+        vector<node*>* get_tobe_sortedlist(node* root, vector<node*>* tobesortedchilderen, int i, bool left);
 
         //node* rockethitsearch(node* root, Rocket* rocket);
 
