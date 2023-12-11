@@ -112,17 +112,13 @@ void Game::init()
         }
     }
 
-    rootBlue = tree.inserttanks(bluelist, true,true,bluelist.size()-1, bluelist.size() - 1,0);
-    cout << bluelist.size() - 1 << endl;
-    tobesortedchilderen = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen, 0, true);
+    cout << bluelist.size() - 1 << endl;//debug
 
-    cout << tobesortedchilderen.size() - 1 << endl;
+    rootBlue = tree.inserttanks(bluelist,0);
 
-    rootRed = tree.inserttanks(redlist, true,true, redlist.size()-1, redlist.size() - 1,0);
-    cout << redlist.size() - 1 << endl;
-    tobesortedchilderen = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen, 0, true);
+    cout << redlist.size() - 1 << endl; //debug
 
-    cout << tobesortedchilderen.size() - 1 << endl;
+    rootRed = tree.inserttanks(redlist, 0);
 
 }
 
@@ -370,7 +366,6 @@ void Game::update_rockets() {
         }
     }
 
-
     //Remove exploded rockets with remove erase idiom
     rockets.erase(std::remove_if(rockets.begin(), rockets.end(), [](const Rocket& rocket) { return !rocket.active; }), rockets.end());
 }
@@ -434,47 +429,19 @@ void Game::update(float deltaTime)
     
     update_tanks();
 
+    tobesortedchilderen = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen,0);
 
-    cout << "root blue update before" << endl;
-    tobesortedchilderen = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen,0,true);
+    rootBlue = tree.insertnodes(tobesortedchilderen, 0);
 
-    cout << tobesortedchilderen.size() - 1 << endl;
+    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
 
-    rootBlue = tree.insertnodes(tobesortedchilderen, true, true, tobesortedchilderen.size() - 1, tobesortedchilderen.size() - 1, 0);
+    tobesortedchilderen = *tree.get_tobe_sortedlist(rootRed, &tobesortedchilderen,0);
 
-    cout << "root blue update after" << endl;
+    rootRed = tree.insertnodes(tobesortedchilderen, 0);
+
     tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
 
 
-    cout << "root red update before" << endl;
-    tobesortedchilderen = *tree.get_tobe_sortedlist(rootRed, &tobesortedchilderen,0, true);
-
-    cout << tobesortedchilderen.size() - 1 << endl;
-
-    rootRed = tree.insertnodes(tobesortedchilderen, true, true, tobesortedchilderen.size() - 1, tobesortedchilderen.size() - 1, 0);
-
-    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
-    cout << "root red return after" << endl;
-
-    /*
-    cout << "root blue update before" << endl;
-    rootBlue = tree.updateinsert(rootBlue, true, &tobesortedchilderen);//TODO clean and better?
-    cout << tobesortedchilderen.size() - 1 << endl;
-    cout << "sort list before" << endl;
-    tobesortedchilderen = sortlist(tobesortedchilderen); //TODO add to update insert
-    cout << "insertnodes before" << endl;
-    rootBlue = tree.insertnodes(tobesortedchilderen, true,true, tobesortedchilderen.size() - 1, tobesortedchilderen.size() - 1, 0); 
-    cout << "insertnodes after" << endl;
-    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
-    cout << "root red update before" << endl;
-    rootRed = tree.updateinsert(rootRed, true, &tobesortedchilderen);
-    cout << "sort list before" << endl;
-    tobesortedchilderen = sortlist(tobesortedchilderen);
-    cout << "insertnodes before" << endl;
-    rootRed = tree.insertnodes(tobesortedchilderen, true, true, tobesortedchilderen.size() - 1, tobesortedchilderen.size() - 1, 0);
-    cout << "insertnodes after" << endl;
-    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
-    */
     update_smoke();
     
     find_concave_hull();
