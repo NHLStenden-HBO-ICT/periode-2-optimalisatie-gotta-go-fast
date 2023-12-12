@@ -3,7 +3,12 @@ namespace Tmpl8 {
 	template<typename T>
 	class ObjectPool
 	{
+		//this class is header only because template classes don't play nice with .cpp files
+		//see https://stackoverflow.com/questions/495021/why-can-templates-only-be-implemented-in-the-header-file
+
 	public:
+		//all our shit's public because we need access to these pools
+		//modify the pools in any other way but the profided methods at your own peril.
 		vector<T> pool;
 		//a deque is like a vector, except that you can add and remove on both sides.
 		deque<T*> free_items;
@@ -16,11 +21,10 @@ namespace Tmpl8 {
 			pool.reserve(size);
 
 			//instantiate all the items in the pool
-			fill(pool.begin(), pool.end(), example);
-
-			//add all the free items to the free pool
+			//and add all the free items to the free pool
 			for (int i = 0; i < size; i++) {
-				free_items.emplace_front(&pool[i]);
+				pool.emplace_back(example);
+				free_items.emplace_front(&(pool[i]));
 			}
 		};
 		
@@ -46,26 +50,19 @@ namespace Tmpl8 {
 		/// <summary>
 		/// Frees up an item that's no longer used.
 		/// </summary>
-		/// <param name="pointer"> points to the item that can be freed</param>
-		void free(T* pointer) {
-			// we have to find the pointer in the deque, 
-			// maybe should use a hashmap instead to circumvent this?
-			for (int i = 0; i < used_items.size(); i++) {
-				if (used_items[i] == pointer) {
-					// when we find the pointer, remove it from the used items 
-					// and add it to the unused items
-					used_items.erase(used_items.begin() + i);
-					free_items.emplace_front(pointer);
-					//no need to loop over the rest of the pointers after this.
-					return;
-				}
-				//throw if we don't find the pointer, because something definitely went wrong...
-				throw runtime_error(string("tried to free a pointer that wasn't in use..."));
-			}
+		/// <param name="iterator"> points to the item that will be freed</param>
+		typename deque<T*>::iterator free(typename deque<T*>::iterator it) {
+			//simply add the pointer at the index to the free items pool and then remove it from used items
+			//we do this with an iterator, though doing it by index would also be possible
+			//when I made this I was of the opinion that this was neater because it's now container agnositic. 
+			//If we want to switch from a deque to something else nothing needs to change
+			free_items.emplace_front(*it);
+			return used_items.erase(it);
+			
 		};
 		
 		/// <summary>
-		/// throw the entire object pool in the output for debugging.
+		/// turn the object pool into a string for some bad debug practices ;).
 		/// </summary>
 		/// <returns>a string containing information about the object pool</returns>
 		string to_string() {
