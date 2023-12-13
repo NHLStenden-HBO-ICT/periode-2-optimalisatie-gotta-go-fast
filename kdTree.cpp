@@ -29,6 +29,7 @@ namespace Tmpl8 {
 
     /// <summary>
     /// creates a new tree based of the list of existing nodes
+    /// its sorts the list and then finds the median of the list and then split them in sublists and give it to the childnodes
     /// </summary>
     /// <param name="list">the list of existing nodes</param>
     /// <param name="i">the depth of the tree</param>
@@ -73,53 +74,12 @@ namespace Tmpl8 {
     }
 
     /// <summary>
-    /// creates a new tree based on the list of tanks.
-    /// </summary>
-    /// <param name="list">the list of tanks to be put into the tree</param>
-    /// <param name="i"> depth of the tree</param>
-    /// <returns>the root node of the tree</returns>
-    kdTree::node* kdTree::inserttanks(vector<Tank*> list, int i)
-    {
-        if (list.size() == 0) {
-            return NULL;
-        }
-
-        int medianindex = (list.size() - 1) / 2;
-
-        Tank* tank = list[medianindex];
-
-        node* median = newnode(tank);
-
-
-        int endL = medianindex;
-        int beginR = medianindex + 1;
-        i = i + 1;
-
-        if (endL < 0) { //if list left has no more potential kids
-            return NULL;
-        }
-
-        if (beginR > list.size()) {//if list right has no more potential kids
-            return NULL;
-        }
-
-        if (endL >= 0) { //if list left has no more potential kids
-            vector<Tank*> ListL = vector<Tank*>(list.begin(), list.begin() + endL);
-            median->left = inserttanks(ListL, i);
-        }
-        if (beginR <= list.size()) {//if list right has no more potential kids
-            vector<Tank*> ListR = vector<Tank*>(list.begin() + beginR, list.end());
-            median->right = inserttanks(ListR, i);
-        }
-        return median;
-    }
-
-    /// <summary>
     /// it searches for the closest node to tank, using an itterative style.
     /// it does so by first checking if root is not null.
     /// it then checks if its at a even or uneven depth.
     /// even depths means its getting checked on the x axis
     /// on uneven depths its getting checked on y axis.
+    /// theorie from : https://www.youtube.com/watch?v=Glp7THUpGow
     /// </summary>
     /// <param name="root">root node of the tree</param>
     /// <param name="tank">the tank of which its position is used to see which node is closest</param>
@@ -127,75 +87,69 @@ namespace Tmpl8 {
     /// <returns>the node that is the closest</returns>
     kdTree::node* kdTree::searchClosest(node* root, Tank tank, int i) {
 
-        float roottopoint;
-        float lefttopoint;
-        float righttopoint;
-
         if (root == NULL) {
             return NULL;
         }
 
+        node* closest = root;
+
+        float rootdistance = pow(2, (root->tank->position.x - tank.position.x)) + pow(2, (root->tank->position.y - tank.position.y));
+
         //if i aka the depth is even that means the check happens on x axis, otherwise it happens on the y axis
-        if (i%2==0) {
-            roottopoint = pow(2.0f, (root->tank->get_position().x - tank.get_position().x));
-            if (root->left != NULL) {
-                lefttopoint = pow(2.0f, (root->left->tank->get_position().x - tank.get_position().x));
+        if (( tank.position.x< root->tank->position.x && i%2==0)||(tank.position.y < root->tank->position.y && i % 2 != 0)) { //if target x is below root x 
+
+            node* temp = searchClosest(root->left, tank, i + 1);
+            
+            closest = getclosest(tank.position, temp, closest);
+
+            float distanceclosest = pow(2, (closest->tank->position.x - tank.position.x)) + pow(2, (closest->tank->position.y - tank.position.y));
+
+            if ((i % 2 == 0 && pow(2, root->tank->position.x - tank.position.x) < distanceclosest)||(i % 2 != 0 && pow(2, root->tank->position.y - tank.position.y) < distanceclosest)) {
+
+                node* temp = searchClosest(root->right, tank, i + 1);
+
+                closest = getclosest(tank.position, temp, closest);
             }
-            if (root->right != NULL) {
-                righttopoint = pow(2.0f, (root->right->tank->get_position().x - tank.get_position().x));
-            }
+
         }
-        else
+        else //if target x is above root x 
         {
-            roottopoint = pow(2.0f, root->tank->get_position().y - tank.get_position().y);
-            if (root->left != NULL) {
-                lefttopoint = pow(2.0f, (root->left->tank->get_position().y - tank.get_position().y));
+
+            node* temp = searchClosest(root->right, tank, i + 1);
+
+            closest = getclosest(tank.position, temp, closest);
+
+            float distanceclosest = pow(2, (closest->tank->position.x - tank.position.x)) + pow(2, (closest->tank->position.y - tank.position.y));
+
+            if ((i % 2 == 0 && pow(2, root->tank->position.x - tank.position.x) < distanceclosest) || (i % 2 != 0 && pow(2, root->tank->position.y - tank.position.y) < distanceclosest)) {
+
+                node* temp = searchClosest(root->left, tank, i + 1);
+
+                closest = getclosest(tank.position, temp, closest);
             }
-            if (root->right != NULL) {
-                righttopoint = pow(2.0f, (root->right->tank->get_position().y - tank.get_position().y));
-            }
-        }
-        
-        i = i + 1; //add 1`to depth
-        if (root->left != NULL && lefttopoint < roottopoint) {
-            if (root->right != NULL && righttopoint < lefttopoint){
-                
-                return searchClosest(root->right, tank,i);
-            }
-            return searchClosest(root->left, tank,i);
-        }
-        //check if right is shortest as long as left is not shorter than root
-        else if (root->right != NULL && righttopoint < roottopoint) {
-            return searchClosest(root->right, tank,i);
-        }
-        else {
-            return root;
         }
 
+        return closest;
     }
-    
-    /// <summary>
-    /// this searches the closest node tank to a certainpoint.
-    /// works itterative
-    /// </summary>
-    /// <param name="root"> a pointer to a root</param>
-    /// <param name="point"> the point which is being compared to </param>
-    /// <returns>the node with the closest tank</returns>
-    kdTree::node* kdTree::searchClosest(node* root, vec2 point) {
-            if (root->left != NULL && fabsf((root->left->tank->get_position() - point).sqr_length()) < fabsf((root->tank->get_position() - point).sqr_length())) {
-            if (root->right != NULL && fabsf((root->right->tank->get_position() - point).sqr_length()) < fabsf((root->left->tank->get_position() - point).sqr_length())){
-                return searchClosest(root->right, point);
-            }
-            return searchClosest(root->left, point);
-        }
-        //check if right is shortest as long as left is not shorter than root
-        else if (root->right != NULL && fabsf((root->right->tank->get_position() - point).sqr_length()) < fabsf((root->tank->get_position() - point).sqr_length())) {
-            return searchClosest(root->right, point);
-        }
-        else {
-            return root;
+
+    kdTree::node* kdTree::getclosest(vec2 target, node* node1, node* node2)
+    {
+        if (node1 == NULL){
+            return node2;
+        }      
+
+        if (node2 == NULL){
+            return node1;
         }
 
+
+        if (pow(2, (node1->tank->position.x - target.x)) + pow(2, (node1->tank->position.y - target.y)) < pow(2, (node2->tank->position.x - target.x)) + pow(2, (node2->tank->position.y - target.y))) {
+
+            return node1;
+        }
+        else {
+            return node2;
+        }
     }
 
     /// <summary>
@@ -237,7 +191,7 @@ namespace Tmpl8 {
     /// <param name="list"> the list of nodes to be sorted</param>
     /// <param name="i"> the depth which determines whether x or y even x uneven y</param>
     /// <returns>the sorted list</returns>
-    vector<kdTree::node*> kdTree::sortnodes(vector<node*> list, int i)
+    vector<kdTree::node*> kdTree::sortnodes(vector<node*> list, int y)
     {
         for ( int i = 0; i < list.size(); i++)
         {
@@ -247,12 +201,12 @@ namespace Tmpl8 {
 
                 node* checkingnode = list[s];
 
-                if (currentnode->tank->position.x < checkingnode->tank->position.x && i%2==0) {
+                if (currentnode->tank->position.x < checkingnode->tank->position.x && y%2==0) {
 
                     list[s] = currentnode;
                     list[s + 1] = checkingnode;
                 }
-                else if(currentnode->tank->position.y < checkingnode->tank->position.y && i % 2 != 0){
+                else if(currentnode->tank->position.y < checkingnode->tank->position.y && y % 2 != 0){
                     list[s] = currentnode;
                     list[s + 1] = checkingnode;
                 }

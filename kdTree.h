@@ -24,12 +24,10 @@ namespace Tmpl8 {
         node* newnode(Tank* tank);
 
         node* insertnodes( vector<node*> list, int i);
-        node* inserttanks( vector<Tank*> list, int i);
-
 
         node* searchClosest(node* root, Tank tank, int i);
 
-        node* searchClosest(node* root, vec2 point);
+        node* getclosest(vec2 target, node* node1, node* node2);
 
         vector<node*>* get_tobe_sortedlist(node* root, vector<node*>* tobesortedchilderen, int i);
 

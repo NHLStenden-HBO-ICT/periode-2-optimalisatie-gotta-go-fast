@@ -100,25 +100,25 @@ void Game::init()
 
     //initialise tree first get root tank aka middlest tank 
 
-    vector<Tank*> bluelist;
-    vector<Tank*> redlist;
+    vector<kdTree::node*> bluelist;
+    vector<kdTree::node*> redlist;
 
     for (int y = 0; y < tanks.size(); y++ ) {
         if (tanks[y].allignment == BLUE) {
-           bluelist.push_back(&tanks[y]);
+           bluelist.push_back(tree.newnode(&tanks[y]));
         }
         if (tanks[y].allignment == RED) { 
-            redlist.push_back(&tanks[y]);
+            redlist.push_back(tree.newnode(&tanks[y]));
         }
     }
 
     cout << bluelist.size() - 1 << endl;//debug
 
-    rootBlue = tree.inserttanks(bluelist,0);
+    rootBlue = tree.insertnodes(bluelist,0);
 
     cout << redlist.size() - 1 << endl; //debug
 
-    rootRed = tree.inserttanks(redlist, 0);
+    rootRed = tree.insertnodes(redlist, 0);
 
 }
 
