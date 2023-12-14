@@ -9,10 +9,6 @@ namespace Tmpl8 {
 
      public:
         kdTree();
-        // -----------------------------------------------------------
-        // Initialize the node
-        // contains a pointer to tank, pointer to its right and left child
-        // -----------------------------------------------------------
         struct node
         {
             Tank* tank;
@@ -25,7 +21,7 @@ namespace Tmpl8 {
 
         node* insertnodes( vector<node*> list, int i);
 
-        node* searchClosest(node* root, Tank tank, int i);
+        node* searchClosest(node* root, vec2 point, int i);
 
         node* getclosest(vec2 target, node* node1, node* node2);
 
@@ -33,7 +29,7 @@ namespace Tmpl8 {
 
         vector<node*> sortnodes(vector<node*> list, int i);
 
-
+        float getdistancesquared(vec2 t1, vec2 t2,int i);
     };
 }
 

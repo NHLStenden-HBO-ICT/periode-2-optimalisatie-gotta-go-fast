@@ -40,7 +40,8 @@ namespace Tmpl8 {
             return NULL;
         }
 
-        list = sortnodes(list, i);
+        list = sortnodes(list, i);     /// TODO maybe sort before incursive, talk with kaja about  it
+
 
         int medianindex = (list.size()-1)/2;
 
@@ -60,14 +61,14 @@ namespace Tmpl8 {
         
         i = i + 1;
 
-        if (beginR <= list.size()) {//if list right has potential kids
-            vector<node*> ListR = vector<node*>(list.begin() + beginR, list.end());
-            median->right = insertnodes(ListR, i);
-        }
-
         if (endL >= 0) { //if list left has potential kids
             vector<node*> ListL = vector<node*>(list.begin(), list.begin() + endL);
             median->left = insertnodes(ListL, i);
+        }
+
+        if (beginR <= list.size()) {//if list right has potential kids
+            vector<node*> ListR = vector<node*>(list.begin() + beginR, list.end());
+            median->right = insertnodes(ListR, i);
         }
 
         return median;
@@ -85,53 +86,53 @@ namespace Tmpl8 {
     /// <param name="tank">the tank of which its position is used to see which node is closest</param>
     /// <param name="i">the currrent depth of the tree</param>
     /// <returns>the node that is the closest</returns>
-    kdTree::node* kdTree::searchClosest(node* root, Tank tank, int i) {
+    kdTree::node* kdTree::searchClosest(node* root, vec2 point, int i) {
 
         if (root == NULL) {
             return NULL;
         }
 
-        node* closest = root;
-
-        float rootdistance = pow(2, (root->tank->position.x - tank.position.x)) + pow(2, (root->tank->position.y - tank.position.y));
+        node* closestbranch;
+        node* otherbranch;
 
         //if i aka the depth is even that means the check happens on x axis, otherwise it happens on the y axis
-        if (( tank.position.x< root->tank->position.x && i%2==0)||(tank.position.y < root->tank->position.y && i % 2 != 0)) { //if target x is below root x 
+        if (( point.x< root->tank->position.x && i%2==0)||(point.y < root->tank->position.y && i % 2 != 0)) { //if target is left
 
-            node* temp = searchClosest(root->left, tank, i + 1);
-            
-            closest = getclosest(tank.position, temp, closest);
-
-            float distanceclosest = pow(2, (closest->tank->position.x - tank.position.x)) + pow(2, (closest->tank->position.y - tank.position.y));
-
-            if ((i % 2 == 0 && pow(2, root->tank->position.x - tank.position.x) < distanceclosest)||(i % 2 != 0 && pow(2, root->tank->position.y - tank.position.y) < distanceclosest)) {
-
-                node* temp = searchClosest(root->right, tank, i + 1);
-
-                closest = getclosest(tank.position, temp, closest);
-            }
+            closestbranch = root->left;
+            otherbranch = root->right;
 
         }
-        else //if target x is above root x 
+        else //if target is in the right branch
         {
+            closestbranch = root->right;
+            otherbranch = root->left;
+        }
 
-            node* temp = searchClosest(root->right, tank, i + 1);
+        node* temp = searchClosest(closestbranch, point, i + 1);
 
-            closest = getclosest(tank.position, temp, closest);
+        node* closest = getclosest(point, temp, root);
 
-            float distanceclosest = pow(2, (closest->tank->position.x - tank.position.x)) + pow(2, (closest->tank->position.y - tank.position.y));
+        float distanceclosest = getdistancesquared(closest->tank->position, point, 0) + getdistancesquared(closest->tank->position, point, 1); // calculation of r
 
-            if ((i % 2 == 0 && pow(2, root->tank->position.x - tank.position.x) < distanceclosest) || (i % 2 != 0 && pow(2, root->tank->position.y - tank.position.y) < distanceclosest)) {
+        if (getdistancesquared(root->tank->position,point, i)<= distanceclosest) {
+            //calculation of r' and see if its smaller.
+            //depending on the depth check if the distance to the other branch is not smaller.
 
-                node* temp = searchClosest(root->left, tank, i + 1);
+            node* temp = searchClosest(otherbranch, point, i + 1);
 
-                closest = getclosest(tank.position, temp, closest);
-            }
+            closest = getclosest(point, temp, closest);
         }
 
         return closest;
     }
 
+    /// <summary>
+    /// compare 2 nodes to see which is the closest to target
+    /// </summary>
+    /// <param name="target"> the target point </param>
+    /// <param name="node1"> the first node which is checked </param>
+    /// <param name="node2"> the second node thats being checked </param>
+    /// <returns> the node thats closest to the target.</returns>
     kdTree::node* kdTree::getclosest(vec2 target, node* node1, node* node2)
     {
         if (node1 == NULL){
@@ -143,7 +144,7 @@ namespace Tmpl8 {
         }
 
 
-        if (pow(2, (node1->tank->position.x - target.x)) + pow(2, (node1->tank->position.y - target.y)) < pow(2, (node2->tank->position.x - target.x)) + pow(2, (node2->tank->position.y - target.y))) {
+        if (((node1->tank->position.x - target.x)* (node1->tank->position.x - target.x)) + ((node1->tank->position.y - target.y)* (node1->tank->position.y - target.y)) < ((node2->tank->position.x - target.x) * (node2->tank->position.x - target.x)) + ((node2->tank->position.y - target.y) * (node2->tank->position.y - target.y))) {
 
             return node1;
         }
@@ -201,18 +202,35 @@ namespace Tmpl8 {
 
                 node* checkingnode = list[s];
 
-                if (currentnode->tank->position.x < checkingnode->tank->position.x && y%2==0) {
+                if (y % 2 == 0) {
+                    if (currentnode->tank->position.x < checkingnode->tank->position.x) {
 
-                    list[s] = currentnode;
-                    list[s + 1] = checkingnode;
+                        list[s] = currentnode;
+                        list[s + 1] = checkingnode;
+                    }
+                    else if (currentnode->tank->position.x == checkingnode->tank->position.x && currentnode->tank->position.y < checkingnode->tank->position.y) {
+
+                        list[s] = currentnode;
+                        list[s + 1] = checkingnode;
+                    }
+                    else
+                    {
+                        break;
+                    }
                 }
-                else if(currentnode->tank->position.y < checkingnode->tank->position.y && y % 2 != 0){
-                    list[s] = currentnode;
-                    list[s + 1] = checkingnode;
-                }
-                else
-                {
-                    break;
+                else if (y % 2 != 0) {
+                    if (currentnode->tank->position.y < checkingnode->tank->position.y && y % 2 != 0) {
+                        list[s] = currentnode;
+                        list[s + 1] = checkingnode;
+                    }
+                    else if (currentnode->tank->position.y == checkingnode->tank->position.y && currentnode->tank->position.x < checkingnode->tank->position.x && y % 2 != 0) {
+                        list[s] = currentnode;
+                        list[s + 1] = checkingnode;
+                    }
+                    else
+                    {
+                        break;
+                    }
                 }
             }
         }
@@ -220,99 +238,23 @@ namespace Tmpl8 {
         return list;
     }
 
-    /* Backup
-    *    kdTree::node* kdTree::insertnode(vector<node*> nodelist,int parentindex, int rootindex, bool left, int i)
+    /// <summary>
+    /// gets the square of the vec2 based of int i or the depth of the tree 
+    /// </summary>
+    /// <param name="t1">first vector </param>
+    /// <param name="t2">second vector </param>
+    /// <param name="i"> depth of the tree, determines wether x or y axis</param>
+    /// <returns> the squared floatnumber </returns>
+    float kdTree::getdistancesquared(vec2 t1, vec2 t2, int i )
     {
-        int medianindex;
-        
-        if (parentindex > rootindex) {
-
-            if (left == false) {
-                medianindex = ((parentindex - rootindex) / 2) + parentindex;
-            }
-            else
-            {
-                medianindex = parentindex - ((parentindex - rootindex) / 2);
-            }
+        if (i % 2 == 0) {
+            return (t1.x - t2.x) * (t1.x - t2.x);
         }
         else
         {
-            medianindex = (parentindex / 2);
-        }
-        cout << medianindex;
-        node* median = nodelist[medianindex];
-
-        if (nodelist.size() == 2) {
-            median->left = insertnode(nodelist, medianindex, rootindex,true,i++);
-            
-        }
-        else if (nodelist.size() > 2)
-        {
-            median->left = insertnode(nodelist, medianindex, rootindex, true, i++);
-
-            median->right = insertnode(nodelist, medianindex,rootindex, false, i++);
-        }
-
-        return median;
-    }
-    /// <summary>
-    /// currently checks for each node if they intersect.
-    /// </summary>
-    /// <param name="root"></param>
-    /// <param name="rocket"></param>
-    /// <returns></returns>
-    kdTree::node* kdTree::rockethitsearch(node* root, Rocket* rocket) {
-
-        if (rocket->intersects(root->tank->position, root->tank->collision_radius)) {//check if root intersects with rocket
-            
-            return root;
-        }
-        else //if root does not check the childeren
-        {
-            float roottorocketpos = fabsf((root->tank->get_position() - rocket->position).sqr_length());
-
-            if (root->left != NULL){ //start with checking if left exists
-
-                float lefttorocketpos = fabsf((root->left->tank->get_position() - rocket->position).sqr_length());
-                if (root->right != NULL) {//check if right exists
-
-                    float righttorocketpos = fabsf((root->right->tank->get_position() - rocket->position).sqr_length());
-                    if (lefttorocketpos< roottorocketpos && righttorocketpos > roottorocketpos ){ //check if the lenght between left and rocket is smaller than root and rocket but greater than right and rocket.
-
-                    }
-
-
-                }
-                else //if right doesn't exist
-                {
-                    node* node = rockethitsearch(root->left, rocket);
-                    if (node != NULL)
-                    {
-                        return node;
-                    }
-                }
-            }
-
-            if (root->right != NULL) {
-                node* node = rockethitsearch(root->right, rocket);
-
-                if (node!= NULL)
-                {
-                    return node;
-                }
-                else
-                {
-                    if (root->left != NULL) {
-                        return rockethitsearch(root->left, rocket);
-                    }
-                } 
-            }
-            return NULL; //no intersecting tank
-
+            return (t1.y - t2.y) * (t1.y - t2.y);
         }
 
     }
-    */
-
 
 }

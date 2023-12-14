@@ -100,6 +100,7 @@ void Game::init()
 
     //initialise tree first get root tank aka middlest tank 
 
+    //if one tree no 2 lists.
     vector<kdTree::node*> bluelist;
     vector<kdTree::node*> redlist;
 
@@ -136,34 +137,12 @@ void Game::shutdown()
 // -----------------------------------------------------------
 Tank& Game::find_closest_enemy(Tank& current_tank)
 {
-    //float closest_distance = numeric_limits<float>::infinity();
-    //int closest_index = 0;
-
     if (current_tank.allignment == RED) {
-        return *tree.searchClosest(rootBlue, current_tank,0)->tank;
+        return *tree.searchClosest(rootBlue, current_tank.position,0)->tank;
     }    
-    if (current_tank.allignment == BLUE) {
-        return *tree.searchClosest(rootRed, current_tank,0)->tank;
+    else if (current_tank.allignment == BLUE) {
+        return *tree.searchClosest(rootRed, current_tank.position,0)->tank;
     }
-    /*
-     
-    for (int i = 0; i < tanks.size(); i++)
-    {
-        if (tanks.at(i).allignment != current_tank.allignment && tanks.at(i).active)
-        {
-            float sqr_dist = fabsf((tanks.at(i).get_position() - current_tank.get_position()).sqr_length());
-            if (sqr_dist < closest_distance)
-            {
-                closest_distance = sqr_dist;
-                closest_index = i;
-            }
-        }
-    }
-
-    return tanks.at(closest_index);
-     
-    */
-
 }
 
 // -----------------------------------------------------------
@@ -222,6 +201,7 @@ void Game::nudge_and_collide_tanks() {
 // n is the amount of tanks
 // -----------------------------------------------------------
 void Game::update_tanks() {
+
     for (Tank& tank : tanks)
     {
         if (tank.active)
@@ -348,6 +328,37 @@ void Game::update_rockets() {
         }
 
     }
+    /*
+    backup
+
+        for (Rocket& rocket : rockets)
+    {
+        rocket.tick();
+        Tank* tank;
+
+        if (rocket.allignment == RED) {
+            tank = tree.searchClosest(rootBlue, rocket.position, 0)->tank;
+        }
+        else if (rocket.allignment == BLUE) {
+            tank = tree.searchClosest(rootRed, rocket.position, 0)->tank;
+        }
+
+        if (rocket.intersects(tank->position, tank->collision_radius))
+        {
+            explosions.push_back(Explosion(&explosion, tank->position));
+
+            if (tank->hit(rocket_hit_value))
+            {
+                smokes.push_back(Smoke(smoke, tank->position - vec2(7, 24)));
+            }
+
+            rocket.active = false;
+            break;
+        }
+
+    }
+
+    */
 
     //Disable rockets if they collide with the "forcefield"
     //Hint: A point to convex hull intersection test might be better here? :) (Disable if outside)
@@ -429,6 +440,7 @@ void Game::update(float deltaTime)
     
     update_tanks();
 
+    //if one tree no 2 lists and no 2 list deletes.
     tobesortedchilderen = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen,0);
 
     rootBlue = tree.insertnodes(tobesortedchilderen, 0);
@@ -454,30 +466,6 @@ void Game::update(float deltaTime)
 
     
     
-}
-
-
-vector<kdTree::node*> Game::sortlist(vector<kdTree::node*> tobesortedchilderen) {
-
-    for (int i = 0; i < tobesortedchilderen.size(); i++) {
-        kdTree::node* current_node = tobesortedchilderen[i];
-
-        for (int s = i - 1; s >= 0; s--)
-        {
-            kdTree::node* checking_node = tobesortedchilderen[s];
-
-            if (checking_node->tank->position.x <= checking_node->tank->position.x) {
-                tobesortedchilderen.at(s) = current_node;
-                tobesortedchilderen.at(s + 1) = checking_node;
-            }
-            else {
-                break;
-            }
-        }
-
-    }
-
-    return tobesortedchilderen;
 }
 
 // -----------------------------------------------------------
