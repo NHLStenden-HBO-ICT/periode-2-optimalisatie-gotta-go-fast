@@ -23,7 +23,11 @@ namespace Tmpl8 {
 
         node* searchClosest(node* root, vec2 point, int i);
 
-        node* getclosest(vec2 target, node* node1, node* node2);
+        node* searchClosestOtherTank(node* root, Tank* tank, int i);
+
+        node* getclosest(vec2 target, node* node1, node* node2);        
+        
+        node* getclosest(Tank* target, node* node1, node* node2);
 
         vector<node*>* get_tobe_sortedlist(node* root, vector<node*>* tobesortedchilderen, int i);
 

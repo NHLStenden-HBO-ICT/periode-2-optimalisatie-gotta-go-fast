@@ -40,7 +40,7 @@ namespace Tmpl8 {
             return NULL;
         }
 
-        list = sortnodes(list, i);     /// TODO maybe sort before incursive, talk with kaja about  it
+        list = sortnodes(list, i);
 
 
         int medianindex = (list.size()-1)/2;
@@ -125,6 +125,52 @@ namespace Tmpl8 {
 
         return closest;
     }
+    
+    /// <summary>
+    /// this function is almost a direct copy of searchclosest but because the check if the tank and the tank in the node is the same it has to be different.
+    /// </summary>
+    /// <param name="root">root of the tree</param>
+    /// <param name="tank"> the tank of which the closest is being checked</param>
+    /// <param name="i">depth</param>
+    /// <returns>the node with closest tank in this tree</returns>
+    kdTree::node* kdTree::searchClosestOtherTank(node* root, Tank* tank, int i)
+    {
+        if (root == NULL) {
+            return NULL;
+        }
+
+        node* closestbranch;
+        node* otherbranch;
+
+        //if i aka the depth is even that means the check happens on x axis, otherwise it happens on the y axis
+        if ((tank->position.x < root->tank->position.x && i % 2 == 0) || (tank->position.y < root->tank->position.y && i % 2 != 0)) { //if target is left
+
+            closestbranch = root->left;
+            otherbranch = root->right;
+        }
+        else //if target is in the right branch
+        {
+            closestbranch = root->right;
+            otherbranch = root->left;
+        }
+
+        node* temp = searchClosestOtherTank(closestbranch, tank,i + 1);
+
+        node* closest = getclosest(tank, temp, root);
+
+        float distanceclosest = getdistancesquared(closest->tank->position, tank->position, 0) + getdistancesquared(closest->tank->position, tank->position, 1); // calculation of r
+
+        if (getdistancesquared(root->tank->position, tank->position, i) <= distanceclosest) {
+            //calculation of r' and see if its smaller.
+            //depending on the depth check if the distance to the other branch is not smaller.
+
+            node* temp = searchClosestOtherTank(otherbranch, tank, i + 1);
+
+            closest = getclosest(tank, temp, closest);
+        }
+
+        return closest;
+    }
 
     /// <summary>
     /// compare 2 nodes to see which is the closest to target
@@ -145,6 +191,44 @@ namespace Tmpl8 {
 
 
         if (((node1->tank->position.x - target.x)* (node1->tank->position.x - target.x)) + ((node1->tank->position.y - target.y)* (node1->tank->position.y - target.y)) < ((node2->tank->position.x - target.x) * (node2->tank->position.x - target.x)) + ((node2->tank->position.y - target.y) * (node2->tank->position.y - target.y))) {
+
+            return node1;
+        }
+        else {
+            return node2;
+        }
+    }
+
+
+    /// <summary>
+    /// compare 2 nodes to see which is the closest to target
+    /// it also checks wether the tank in the nodes is the same as the target.
+    /// if that is the case give the other node as the closest.
+    /// </summary>
+    /// <param name="target"the tank></param>
+    /// <param name="node1">the first node which is checked </param>
+    /// <param name="node2"> the second node thats being checked </param>
+    /// <returns> the node thats closest to the target.</returns>
+    kdTree::node* kdTree::getclosest(Tank* target, node* node1, node* node2)
+    {
+        if (node1 == NULL) {
+            return node2;
+        }
+
+        if (node2 == NULL) {
+            return node1;
+        }
+
+        if (target == node1->tank) {
+            return node2;
+        }
+
+        if (target == node2->tank) {
+            return node1;
+        }
+
+
+        if (getdistancesquared(node1->tank->position, target->position,0) + getdistancesquared(node1->tank->position, target->position,1) < getdistancesquared(node2->tank->position, target->position, 0) + getdistancesquared(node2->tank->position, target->position, 1)) {
 
             return node1;
         }

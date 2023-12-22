@@ -166,33 +166,36 @@ void Game::init_tank_routes() {
     }
 }
 
-// -----------------------------------------------------------
-// Check tank collision and nudge tanks away from each other
-// O(n^2)=n^2
-// n is the amount of tanks
-// -----------------------------------------------------------
+/// <summary>
+/// the function that calculates the colides and nudges of the tanks.
+/// it first gathers all active tanks in a list based on the two trees.
+/// it uses the kd tree to see which is closest of the red and blue tree each and then compares the two to see which one is truly the closest.
+/// it then calculates wether a nudge must happen or not.
+/// </summary>
 void Game::nudge_and_collide_tanks() {
-    for (Tank& tank : tanks)
+
+    vector<kdTree::node*> nodes = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen, 0);
+    nodes = *tree.get_tobe_sortedlist(rootRed, &nodes, 0);
+
+    for (kdTree::node* node : nodes) 
     {
-        if (tank.active)
+        kdTree::node* checkblue = tree.searchClosestOtherTank(rootBlue,node->tank,0);
+        kdTree::node* checkred = tree.searchClosestOtherTank(rootRed,node->tank,0);
+        kdTree::node* closest = tree.getclosest(node->tank, checkblue, checkred);
+
+        vec2 dir = node->tank->get_position() - closest->tank->get_position(); 
+        float dir_squared_len = dir.sqr_length();
+
+        float col_squared_len = (node->tank->get_collision_radius() + closest->tank->get_collision_radius()); 
+        col_squared_len *= col_squared_len;
+
+        if (dir_squared_len < col_squared_len)
         {
-            for (Tank& other_tank : tanks)
-            {
-                if (&tank == &other_tank || !other_tank.active) continue;
-
-                vec2 dir = tank.get_position() - other_tank.get_position();
-                float dir_squared_len = dir.sqr_length();
-
-                float col_squared_len = (tank.get_collision_radius() + other_tank.get_collision_radius());
-                col_squared_len *= col_squared_len;
-
-                if (dir_squared_len < col_squared_len)
-                {
-                    tank.push(dir.normalized(), 1.f);
-                }
-            }
+            node->tank->push(dir.normalized(), 1.f); 
         }
     }
+
+    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
 }
 
 // -----------------------------------------------------------
@@ -307,34 +310,11 @@ void Game::find_concave_hull() {
 // k is the size of the forcefield hull
 // -----------------------------------------------------------
 void Game::update_rockets() {
+   
     for (Rocket& rocket : rockets)
     {
         rocket.tick();
-
-        for (Tank& tank : tanks)
-        {
-            if (tank.active && (tank.allignment != rocket.allignment) && rocket.intersects(tank.position, tank.collision_radius))
-            {
-                explosions.push_back(Explosion(&explosion, tank.position));
-
-                if (tank.hit(rocket_hit_value))
-                {
-                    smokes.push_back(Smoke(smoke, tank.position - vec2(7, 24)));
-                }
-
-                rocket.active = false;
-                break;
-            }
-        }
-
-    }
-    /*
-    backup
-
-        for (Rocket& rocket : rockets)
-    {
-        rocket.tick();
-        Tank* tank;
+        Tank* tank; 
 
         if (rocket.allignment == RED) {
             tank = tree.searchClosest(rootBlue, rocket.position, 0)->tank;
@@ -353,12 +333,11 @@ void Game::update_rockets() {
             }
 
             rocket.active = false;
-            break;
         }
 
     }
 
-    */
+    
 
     //Disable rockets if they collide with the "forcefield"
     //Hint: A point to convex hull intersection test might be better here? :) (Disable if outside)
