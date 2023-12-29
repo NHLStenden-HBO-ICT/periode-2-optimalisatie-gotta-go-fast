@@ -2,9 +2,11 @@
 
 constexpr auto num_tanks_blue = 2048;
 constexpr auto num_tanks_red = 2048;
+constexpr auto num_tanks = num_tanks_blue + num_tanks_red;
 
 constexpr auto tank_max_health = 1000;
 constexpr auto rocket_hit_value = 60;
+constexpr auto rocket_speed_multiplier = 3;
 constexpr auto particle_beam_hit_value = 50;
 
 constexpr auto tank_max_speed = 1.0;
@@ -40,6 +42,15 @@ const static vec2 rocket_size(6, 6);
 
 const static float tank_radius = 3.f;
 const static float rocket_radius = 5.f;
+
+ObjectPool<Rocket> rockets_pool = ObjectPool<Rocket>{ num_tanks * 2,
+    Rocket {
+        vec2{0, 0},
+        vec2{1, 1},
+        1.0f,
+        RED,
+        &rocket_red
+} };
 
 //===========================================
 // Main bottlenecks
@@ -188,13 +199,25 @@ void Game::update_tanks() {
             if (tank.rocket_reloaded())
             {
                 Tank& target = find_closest_enemy(tank);
-
-                rockets.push_back(Rocket(tank.position, (target.get_position() - tank.position).normalized() * 3, rocket_radius, tank.allignment, ((tank.allignment == RED) ? &rocket_red : &rocket_blue)));
+                
+                //cout << "instancing rocket" << endl;
+                Rocket* rocket = rockets_pool.get();
+                
+                rocket->active = true;
+                rocket->allignment = tank.allignment;
+                rocket->collision_radius = rocket_radius;
+                rocket->current_frame = 0;
+                rocket->position = tank.position;
+                rocket->speed = (target.get_position() - tank.position).normalized() * rocket_speed_multiplier;
+                rocket->rocket_sprite = ((tank.allignment == RED) ? &rocket_red : &rocket_blue);
+                //cout << rockets_pool.to_string();
+                //rockets.push_back(Rocket(tank.position, (target.get_position() - tank.position).normalized() * 3, rocket_radius, tank.allignment, ((tank.allignment == RED) ? &rocket_red : &rocket_blue)));
 
                 tank.reload_rocket();
             }
         }
     }
+    
 }
 
 // -----------------------------------------------------------
@@ -281,14 +304,16 @@ void Game::find_concave_hull() {
 // k is the size of the forcefield hull
 // -----------------------------------------------------------
 void Game::update_rockets() {
-    for (Rocket& rocket : rockets)
+    for (auto rocket_iterator = rockets_pool.used_items.begin(); rocket_iterator != rockets_pool.used_items.end(); )
     {
-        rocket.tick();
+        Rocket* rocket = *rocket_iterator;
+        bool found = false;
+        rocket->tick();
 
         //Check if rocket collides with enemy tank, spawn explosion, and if tank is destroyed spawn a smoke plume
         for (Tank& tank : tanks)
         {
-            if (tank.active && (tank.allignment != rocket.allignment) && rocket.intersects(tank.position, tank.collision_radius))
+            if (tank.active && (tank.allignment != rocket->allignment) && rocket->intersects(tank.position, tank.collision_radius))
             {
                 explosions.push_back(Explosion(&explosion, tank.position));
 
@@ -297,33 +322,50 @@ void Game::update_rockets() {
                     smokes.push_back(Smoke(smoke, tank.position - vec2(7, 24)));
                 }
 
-                rocket.active = false;
+                rocket_iterator = rockets_pool.free(rocket_iterator);
+                found = true;
                 break;
             }
+        }
+        if (!found) {
+            ++rocket_iterator;
+        }
+        if (rocket_iterator > rockets_pool.used_items.end()) {
+            break;
         }
     }
 
     //Disable rockets if they collide with the "forcefield"
     //Hint: A point to convex hull intersection test might be better here? :) (Disable if outside)
-    for (Rocket& rocket : rockets)
+    for (auto rocket_iterator = rockets_pool.used_items.begin(); rocket_iterator != rockets_pool.used_items.end(); )
     {
-        if (rocket.active)
+        Rocket* rocket_ptr = *rocket_iterator;
+        bool found = false;
+
+        if (rocket_ptr->active)
         {
             for (size_t i = 0; i < forcefield_hull.size(); i++)
             {
-                if (circle_segment_intersect(forcefield_hull.at(i), forcefield_hull.at((i + 1) % forcefield_hull.size()), rocket.position, rocket.collision_radius))
+                if (circle_segment_intersect(forcefield_hull.at(i), forcefield_hull.at((i + 1) % forcefield_hull.size()), rocket_ptr->position, rocket_ptr->collision_radius))
                 {
-                    explosions.push_back(Explosion(&explosion, rocket.position));
-                    rocket.active = false;
+                    explosions.push_back(Explosion(&explosion, rocket_ptr->position));
+                    rocket_iterator = rockets_pool.free(rocket_iterator);
+                    found = true;
                 }
             }
+        }
+        if (!found) {
+            ++rocket_iterator;
+        }
+        if (rocket_iterator > rockets_pool.used_items.end()) {
+            break;
         }
     }
 
 
 
     //Remove exploded rockets with remove erase idiom
-    rockets.erase(std::remove_if(rockets.begin(), rockets.end(), [](const Rocket& rocket) { return !rocket.active; }), rockets.end());
+    //rockets.erase(std::remove_if(rockets.begin(), rockets.end(), [](const Rocket& rocket) { return !rocket.active; }), rockets.end());
 }
 
 // -----------------------------------------------------------
@@ -374,7 +416,7 @@ void Game::update_explosions() {
 // Targeting etc..
 // -----------------------------------------------------------
 void Game::update(float deltaTime)
-{   
+{
     //Initializing routes here so it gets counted for performance..
     if (frame_count == 0)
     {
@@ -416,9 +458,9 @@ void Game::draw()
         vec2 tank_pos = tanks.at(i).get_position();
     }
 
-    for (Rocket& rocket : rockets)
+    for (Rocket* rocket : rockets_pool.used_items)
     {
-        rocket.draw(screen);
+        rocket->draw(screen);
     }
 
     for (Smoke& smoke : smokes)

@@ -134,6 +134,7 @@
   <ItemGroup>
     <ClInclude Include="explosion.h" />
     <ClInclude Include="game.h" />
+    <ClInclude Include="object_pool.h" />
     <ClInclude Include="particle_beam.h" />
     <ClInclude Include="precomp.h" />
     <ClInclude Include="rocket.h" />
