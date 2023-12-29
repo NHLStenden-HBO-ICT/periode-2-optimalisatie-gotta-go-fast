@@ -83,6 +83,7 @@ using namespace Tmpl8;
 
 #include "thread_pool.h"
 
+#include "kdTree.h"
 #include "tank.h"
 #include "terrain.h"
 #include "rocket.h"
