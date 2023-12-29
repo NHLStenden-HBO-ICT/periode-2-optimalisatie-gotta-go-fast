@@ -7,6 +7,7 @@ class Tank;
 class Rocket;
 class Smoke;
 class Particle_beam;
+class Object_Pool;
 
 
 class Game
@@ -25,14 +26,15 @@ class Game
     Tank& find_closest_enemy(Tank& current_tank);
 
     //new stuff
-    void init_tank_routes();
-    void nudge_and_collide_tanks();
-    void update_tanks();
-    void update_smoke();
-    void find_concave_hull();
-    void update_rockets();
-    void update_particle_beams();
-    void update_explosions();
+    __declspec(noinline) void init_tank_routes();
+    __declspec(noinline) void nudge_and_collide_tanks();
+    __declspec(noinline) void update_tanks();
+    __declspec(noinline) void update_smoke();
+    __declspec(noinline) void find_concave_hull();
+    __declspec(noinline) void update_rockets();
+    __declspec(noinline) void update_particle_beams();
+    __declspec(noinline) void update_explosions();
+
     vector<kdTree::node*> sortlist(vector<kdTree::node*> tobesortedchilderen);
 
     void mouse_up(int button)
@@ -59,10 +61,11 @@ class Game
     Surface* screen;
 
     vector<Tank> tanks;
-    vector<Rocket> rockets;
+    //vector<Rocket> rockets;
     vector<Smoke> smokes;
     vector<Explosion> explosions;
     vector<Particle_beam> particle_beams;
+    
 
     Terrain background_terrain;
     std::vector<vec2> forcefield_hull;

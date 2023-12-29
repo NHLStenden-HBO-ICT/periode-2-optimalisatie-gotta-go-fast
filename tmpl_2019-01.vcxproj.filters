@@ -33,6 +33,7 @@
     <ClInclude Include="thread_pool.h" />
     <ClInclude Include="terrain.h" />
     <ClInclude Include="kdTree.h" />
+    <ClInclude Include="object_pool.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="template code">
