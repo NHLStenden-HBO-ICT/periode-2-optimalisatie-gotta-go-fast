@@ -356,11 +356,11 @@ void Game::update_rockets() {
                 smokes.push_back(Smoke(smoke, tank->position - vec2(7, 24)));
             }
 
-                rocket_iterator = rockets_pool.free(rocket_iterator);
-                found = true;
-                break;
-            }
+            rocket_iterator = rockets_pool.free(rocket_iterator);
+            found = true;
+            
         }
+
         if (!found) {
             ++rocket_iterator;
         }
