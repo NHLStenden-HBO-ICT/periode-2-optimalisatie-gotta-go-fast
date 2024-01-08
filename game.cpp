@@ -56,8 +56,11 @@ ObjectPool<Rocket> rockets_pool = ObjectPool<Rocket>{ num_tanks * 2,
 kdTree::node* rootBlue;
 kdTree::node* rootRed;
 
+vector<kdTree::node*> tobesortedchilderenblue;
+vector<kdTree::node*> tobesortedchilderenred;
 vector<kdTree::node*> tobesortedchilderen;
 kdTree tree;
+static ThreadPool threadpool = ThreadPool(std::thread::hardware_concurrency());
 
 //===========================================
 // Main bottlenecks
@@ -65,8 +68,6 @@ kdTree tree;
 // ~ nudge_and_collide_tanks (n^2)
 // ~ update_tanks (n^2)
 //===========================================
-
-
 
 // -----------------------------------------------------------
 // Initialize the simulation state
@@ -190,19 +191,19 @@ void Game::nudge_and_collide_tanks() {
 
     for (kdTree::node* node : nodes) 
     {
-        kdTree::node* checkblue = tree.searchClosestOtherTank(rootBlue,node->tank,0);
-        kdTree::node* checkred = tree.searchClosestOtherTank(rootRed,node->tank,0);
+        kdTree::node* checkblue = tree.searchClosestOtherTank(rootBlue, node->tank, 0);
+        kdTree::node* checkred = tree.searchClosestOtherTank(rootRed, node->tank, 0);
         kdTree::node* closest = tree.getclosest(node->tank, checkblue, checkred);
 
-        vec2 dir = node->tank->get_position() - closest->tank->get_position(); 
+        vec2 dir = node->tank->get_position() - closest->tank->get_position();
         float dir_squared_len = dir.sqr_length();
 
-        float col_squared_len = (node->tank->get_collision_radius() + closest->tank->get_collision_radius()); 
+        float col_squared_len = (node->tank->get_collision_radius() + closest->tank->get_collision_radius());
         col_squared_len *= col_squared_len;
 
         if (dir_squared_len < col_squared_len)
         {
-            node->tank->push(dir.normalized(), 1.f); 
+            node->tank->push(dir.normalized(), 1.f);
         }
     }
 
@@ -211,7 +212,7 @@ void Game::nudge_and_collide_tanks() {
 
 // -----------------------------------------------------------
 // Update tanks 
-// O(n^2)=n^2
+// O(n^2)=n
 // n is the amount of tanks
 // -----------------------------------------------------------
 void Game::update_tanks() {
@@ -227,10 +228,10 @@ void Game::update_tanks() {
             if (tank.rocket_reloaded())
             {
                 Tank& target = find_closest_enemy(tank);
-                
+
                 //cout << "instancing rocket" << endl;
                 Rocket* rocket = rockets_pool.get();
-                
+
                 rocket->active = true;
                 rocket->allignment = tank.allignment;
                 rocket->collision_radius = rocket_radius;
@@ -254,8 +255,7 @@ void Game::update_tanks() {
 // n is the amount of smoke
 // -----------------------------------------------------------
 void Game::update_smoke() {
-    for (Smoke& smoke : smokes)
-    {
+    for (Smoke smoke :smokes){
         smoke.tick();
     }
 }
@@ -412,7 +412,7 @@ void Game::update_rockets() {
 void Game::update_particle_beams() {
     for (Particle_beam& particle_beam : particle_beams)
     {
-        particle_beam.tick(tanks);
+        particle_beam.tick(tanks); //wHY USE TANKS?
 
         //Damage all tanks within the damage window of the beam (the window is an axis-aligned bounding box)
         for (Tank& tank : tanks)
@@ -458,36 +458,24 @@ void Game::update(float deltaTime)
         init_tank_routes();
     }
     
+
     nudge_and_collide_tanks();
-    
     update_tanks();
 
-    //if one tree no 2 lists and no 2 list deletes.
-    tobesortedchilderen = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen,0);
+    rootBlue = tree.insertnodes(*tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderenblue, 0) , 0);
 
-    rootBlue = tree.insertnodes(tobesortedchilderen, 0);
+    tobesortedchilderenblue.erase(tobesortedchilderenblue.begin(), tobesortedchilderenblue.end());
 
-    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
+    rootRed = tree.insertnodes(*tree.get_tobe_sortedlist(rootRed, &tobesortedchilderenred, 0), 0);
 
-    tobesortedchilderen = *tree.get_tobe_sortedlist(rootRed, &tobesortedchilderen,0);
+    tobesortedchilderenred.erase(tobesortedchilderenred.begin(), tobesortedchilderenred.end());
 
-    rootRed = tree.insertnodes(tobesortedchilderen, 0);
+    threadpool.enqueue([=] {update_smoke(); });
+    threadpool.enqueue([=] {find_concave_hull(); });
+    threadpool.enqueue([=] {update_rockets(); });
+    threadpool.enqueue([=] {update_particle_beams(); });
 
-    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
-
-
-    update_smoke();
-    
-    find_concave_hull();
-    
-    update_rockets();
-    
-    update_particle_beams();
-    
-    update_explosions();    
-
-    
-    
+    threadpool.enqueue([=] { update_explosions(); });
 }
 
 // -----------------------------------------------------------

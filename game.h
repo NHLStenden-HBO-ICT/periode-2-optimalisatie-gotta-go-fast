@@ -12,6 +12,7 @@ class Object_Pool;
 
 class Game
 {
+    
   public:
     void set_target(Surface* surface) { screen = surface; }
     void init();
@@ -22,6 +23,7 @@ class Game
     void insertion_sort_tanks_health(const std::vector<Tank>& original, std::vector<const Tank*>& sorted_tanks, int begin, int end);
     void draw_health_bars(const std::vector<const Tank*>& sorted_tanks, const int team);
     void measure_performance();
+    
 
     Tank& find_closest_enemy(Tank& current_tank);
 
@@ -34,6 +36,7 @@ class Game
     __declspec(noinline) void update_rockets();
     __declspec(noinline) void update_particle_beams();
     __declspec(noinline) void update_explosions();
+    __declspec(noinline) void tankupdatethread(int i);
 
     vector<kdTree::node*> sortlist(vector<kdTree::node*> tobesortedchilderen);
 
