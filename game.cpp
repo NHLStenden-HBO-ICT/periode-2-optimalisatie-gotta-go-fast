@@ -1,5 +1,6 @@
 #include "precomp.h" // include (only) this in every .cpp file
 
+
 constexpr auto num_tanks_blue = 2048;
 constexpr auto num_tanks_red = 2048;
 constexpr auto num_tanks = num_tanks_blue + num_tanks_red;
@@ -16,7 +17,7 @@ constexpr auto health_bar_width = 70;
 constexpr auto max_frames = 2000;
 
 //Global performance timer
-constexpr auto REF_PERFORMANCE = 94653; //UPDATE THIS WITH YOUR REFERENCE PERFORMANCE (see console after 2k frames)
+constexpr auto REF_PERFORMANCE = 157596; //UPDATE THIS WITH YOUR REFERENCE PERFORMANCE (see console after 2k frames)
 static timer perf_timer;
 static float duration;
 
@@ -52,12 +53,19 @@ ObjectPool<Rocket> rockets_pool = ObjectPool<Rocket>{ num_tanks * 2,
         &rocket_red
 } };
 
+KdTree::node* rootBlue;
+KdTree::node* rootRed;
+
+vector<KdTree::node*> tobesortedchilderen;
+KdTree tree;
+
 //===========================================
 // Main bottlenecks
 // ~ Single threading
 // ~ nudge_and_collide_tanks (n^2)
 // ~ update_tanks (n^2)
 //===========================================
+
 
 
 // -----------------------------------------------------------
@@ -67,6 +75,7 @@ ObjectPool<Rocket> rockets_pool = ObjectPool<Rocket>{ num_tanks * 2,
 // -----------------------------------------------------------
 void Game::init()
 {
+    tree = KdTree();
     frame_count_font = new Font("assets/digital_small.png", "ABCDEFGHIJKLMNOPQRSTUVWXYZ:?!=-0123456789.");
 
     tanks.reserve(num_tanks_blue + num_tanks_red);
@@ -81,11 +90,13 @@ void Game::init()
 
     float spacing = 7.5f;
 
+
     //Spawn blue tanks
     for (int i = 0; i < num_tanks_blue; i++)
     {
         vec2 position{ start_blue_x + ((i % max_rows) * spacing), start_blue_y + ((i / max_rows) * spacing) };
         tanks.push_back(Tank(position.x, position.y, BLUE, &tank_blue, &smoke, 1100.f, position.y + 16, tank_radius, tank_max_health, tank_max_speed));
+
     }
     //Spawn red tanks
     for (int i = 0; i < num_tanks_red; i++)
@@ -97,6 +108,30 @@ void Game::init()
     particle_beams.push_back(Particle_beam(vec2(590, 327), vec2(100, 50), &particle_beam_sprite, particle_beam_hit_value));
     particle_beams.push_back(Particle_beam(vec2(64, 64), vec2(100, 50), &particle_beam_sprite, particle_beam_hit_value));
     particle_beams.push_back(Particle_beam(vec2(1200, 600), vec2(100, 50), &particle_beam_sprite, particle_beam_hit_value));
+
+    //initialise tree first get root tank aka middlest tank 
+
+    //if one tree no 2 lists.
+    vector<KdTree::node*> bluelist;
+    vector<KdTree::node*> redlist;
+
+    for (int y = 0; y < tanks.size(); y++ ) {
+        if (tanks[y].allignment == BLUE) {
+           bluelist.push_back(tree.newnode(&tanks[y]));
+        }
+        if (tanks[y].allignment == RED) { 
+            redlist.push_back(tree.newnode(&tanks[y]));
+        }
+    }
+
+    cout << bluelist.size() - 1 << endl;//debug
+
+    rootBlue = tree.insert_nodes(bluelist,0);
+
+    cout << redlist.size() - 1 << endl; //debug
+
+    rootRed = tree.insert_nodes(redlist, 0);
+
 }
 
 // -----------------------------------------------------------
@@ -113,23 +148,12 @@ void Game::shutdown()
 // -----------------------------------------------------------
 Tank& Game::find_closest_enemy(Tank& current_tank)
 {
-    float closest_distance = numeric_limits<float>::infinity();
-    int closest_index = 0;
-
-    for (int i = 0; i < tanks.size(); i++)
-    {
-        if (tanks.at(i).allignment != current_tank.allignment && tanks.at(i).active)
-        {
-            float sqr_dist = fabsf((tanks.at(i).get_position() - current_tank.get_position()).sqr_length());
-            if (sqr_dist < closest_distance)
-            {
-                closest_distance = sqr_dist;
-                closest_index = i;
-            }
-        }
+    if (current_tank.allignment == RED) {
+        return *tree.search_closest(rootBlue, current_tank.position,0)->tank;
+    }    
+    else if (current_tank.allignment == BLUE) {
+        return *tree.search_closest(rootRed, current_tank.position,0)->tank;
     }
-
-    return tanks.at(closest_index);
 }
 
 // -----------------------------------------------------------
@@ -153,33 +177,36 @@ void Game::init_tank_routes() {
     }
 }
 
-// -----------------------------------------------------------
-// Check tank collision and nudge tanks away from each other
-// O(n^2)=n^2
-// n is the amount of tanks
-// -----------------------------------------------------------
+/// <summary>
+/// the function that calculates the colides and nudges of the tanks.
+/// it first gathers all active tanks in a list based on the two trees.
+/// it uses the kd tree to see which is closest of the red and blue tree each and then compares the two to see which one is truly the closest.
+/// it then calculates wether a nudge must happen or not.
+/// </summary>
 void Game::nudge_and_collide_tanks() {
-    for (Tank& tank : tanks)
+
+    vector<KdTree::node*> nodes = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen, 0);
+    nodes = *tree.get_tobe_sortedlist(rootRed, &nodes, 0);
+
+    for (KdTree::node* node : nodes) 
     {
-        if (tank.active)
+        KdTree::node* checkblue = tree.search_closest_other_tank(rootBlue,node->tank,0);
+        KdTree::node* checkred = tree.search_closest_other_tank(rootRed,node->tank,0);
+        KdTree::node* closest = tree.get_closest(node->tank, checkblue, checkred);
+
+        vec2 dir = node->tank->get_position() - closest->tank->get_position(); 
+        float dir_squared_len = dir.sqr_length();
+
+        float col_squared_len = (node->tank->get_collision_radius() + closest->tank->get_collision_radius()); 
+        col_squared_len *= col_squared_len;
+
+        if (dir_squared_len < col_squared_len)
         {
-            for (Tank& other_tank : tanks)
-            {
-                if (&tank == &other_tank || !other_tank.active) continue;
-
-                vec2 dir = tank.get_position() - other_tank.get_position();
-                float dir_squared_len = dir.sqr_length();
-
-                float col_squared_len = (tank.get_collision_radius() + other_tank.get_collision_radius());
-                col_squared_len *= col_squared_len;
-
-                if (dir_squared_len < col_squared_len)
-                {
-                    tank.push(dir.normalized(), 1.f);
-                }
-            }
+            node->tank->push(dir.normalized(), 1.f); 
         }
     }
+
+    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
 }
 
 // -----------------------------------------------------------
@@ -188,6 +215,7 @@ void Game::nudge_and_collide_tanks() {
 // n is the amount of tanks
 // -----------------------------------------------------------
 void Game::update_tanks() {
+
     for (Tank& tank : tanks)
     {
         if (tank.active)
@@ -241,7 +269,8 @@ void Game::find_concave_hull() {
     //Calculate "forcefield" around active tanks
     forcefield_hull.clear();
 
-    //Find first active tank (this loop is a bit disgusting, fix?)
+
+   //Find first active tank (this loop is a bit disgusting, fix?)
     int first_active = 0;
     for (Tank& tank : tanks)
     {
@@ -309,31 +338,39 @@ void Game::update_rockets() {
         Rocket* rocket = *rocket_iterator;
         bool found = false;
         rocket->tick();
+        Tank* tank; 
 
-        //Check if rocket collides with enemy tank, spawn explosion, and if tank is destroyed spawn a smoke plume
-        for (Tank& tank : tanks)
-        {
-            if (tank.active && (tank.allignment != rocket->allignment) && rocket->intersects(tank.position, tank.collision_radius))
-            {
-                explosions.push_back(Explosion(&explosion, tank.position));
-
-                if (tank.hit(rocket_hit_value))
-                {
-                    smokes.push_back(Smoke(smoke, tank.position - vec2(7, 24)));
-                }
-
-                rocket_iterator = rockets_pool.free(rocket_iterator);
-                found = true;
-                break;
-            }
+        if (rocket->allignment == RED) {
+            tank = tree.search_closest(rootBlue, rocket->position, 0)->tank;
         }
+        else if (rocket->allignment == BLUE) {
+            tank = tree.search_closest(rootRed, rocket->position, 0)->tank;
+        }
+
+        if (rocket->intersects(tank->position, tank->collision_radius))
+        {
+            explosions.push_back(Explosion(&explosion, tank->position));
+
+            if (tank->hit(rocket_hit_value))
+            {
+                smokes.push_back(Smoke(smoke, tank->position - vec2(7, 24)));
+            }
+
+            rocket_iterator = rockets_pool.free(rocket_iterator);
+            found = true;
+            
+        }
+
         if (!found) {
             ++rocket_iterator;
         }
         if (rocket_iterator > rockets_pool.used_items.end()) {
             break;
         }
+
     }
+
+    
 
     //Disable rockets if they collide with the "forcefield"
     //Hint: A point to convex hull intersection test might be better here? :) (Disable if outside)
@@ -361,8 +398,6 @@ void Game::update_rockets() {
             break;
         }
     }
-
-
 
     //Remove exploded rockets with remove erase idiom
     //rockets.erase(std::remove_if(rockets.begin(), rockets.end(), [](const Rocket& rocket) { return !rocket.active; }), rockets.end());
@@ -422,20 +457,37 @@ void Game::update(float deltaTime)
     {
         init_tank_routes();
     }
-
+    
     nudge_and_collide_tanks();
-
+    
     update_tanks();
 
-    update_smoke();
+    //if one tree no 2 lists and no 2 list deletes.
+    tobesortedchilderen = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen,0);
 
+    rootBlue = tree.insert_nodes(tobesortedchilderen, 0);
+
+    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
+
+    tobesortedchilderen = *tree.get_tobe_sortedlist(rootRed, &tobesortedchilderen,0);
+
+    rootRed = tree.insert_nodes(tobesortedchilderen, 0);
+
+    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
+
+
+    update_smoke();
+    
     find_concave_hull();
     
     update_rockets();
-   
+    
     update_particle_beams();
-
+    
     update_explosions();    
+
+    
+    
 }
 
 // -----------------------------------------------------------

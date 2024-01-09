@@ -9,6 +9,7 @@ class Smoke;
 class Particle_beam;
 class Object_Pool;
 
+
 class Game
 {
   public:
@@ -34,6 +35,7 @@ class Game
     __declspec(noinline) void update_particle_beams();
     __declspec(noinline) void update_explosions();
 
+    vector<KdTree::node*> sortlist(vector<KdTree::node*> tobesortedchilderen);
 
     void mouse_up(int button)
     { /* implement if you want to detect mouse button presses */
