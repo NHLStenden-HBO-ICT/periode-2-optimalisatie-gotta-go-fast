@@ -53,11 +53,11 @@ ObjectPool<Rocket> rockets_pool = ObjectPool<Rocket>{ num_tanks * 2,
         &rocket_red
 } };
 
-kdTree::node* rootBlue;
-kdTree::node* rootRed;
+KdTree::node* rootBlue;
+KdTree::node* rootRed;
 
-vector<kdTree::node*> tobesortedchilderen;
-kdTree tree;
+vector<KdTree::node*> tobesortedchilderen;
+KdTree tree;
 
 //===========================================
 // Main bottlenecks
@@ -75,7 +75,7 @@ kdTree tree;
 // -----------------------------------------------------------
 void Game::init()
 {
-    tree = kdTree();
+    tree = KdTree();
     frame_count_font = new Font("assets/digital_small.png", "ABCDEFGHIJKLMNOPQRSTUVWXYZ:?!=-0123456789.");
 
     tanks.reserve(num_tanks_blue + num_tanks_red);
@@ -112,8 +112,8 @@ void Game::init()
     //initialise tree first get root tank aka middlest tank 
 
     //if one tree no 2 lists.
-    vector<kdTree::node*> bluelist;
-    vector<kdTree::node*> redlist;
+    vector<KdTree::node*> bluelist;
+    vector<KdTree::node*> redlist;
 
     for (int y = 0; y < tanks.size(); y++ ) {
         if (tanks[y].allignment == BLUE) {
@@ -126,11 +126,11 @@ void Game::init()
 
     cout << bluelist.size() - 1 << endl;//debug
 
-    rootBlue = tree.insertnodes(bluelist,0);
+    rootBlue = tree.insert_nodes(bluelist,0);
 
     cout << redlist.size() - 1 << endl; //debug
 
-    rootRed = tree.insertnodes(redlist, 0);
+    rootRed = tree.insert_nodes(redlist, 0);
 
 }
 
@@ -149,10 +149,10 @@ void Game::shutdown()
 Tank& Game::find_closest_enemy(Tank& current_tank)
 {
     if (current_tank.allignment == RED) {
-        return *tree.searchClosest(rootBlue, current_tank.position,0)->tank;
+        return *tree.search_closest(rootBlue, current_tank.position,0)->tank;
     }    
     else if (current_tank.allignment == BLUE) {
-        return *tree.searchClosest(rootRed, current_tank.position,0)->tank;
+        return *tree.search_closest(rootRed, current_tank.position,0)->tank;
     }
 }
 
@@ -185,14 +185,14 @@ void Game::init_tank_routes() {
 /// </summary>
 void Game::nudge_and_collide_tanks() {
 
-    vector<kdTree::node*> nodes = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen, 0);
+    vector<KdTree::node*> nodes = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen, 0);
     nodes = *tree.get_tobe_sortedlist(rootRed, &nodes, 0);
 
-    for (kdTree::node* node : nodes) 
+    for (KdTree::node* node : nodes) 
     {
-        kdTree::node* checkblue = tree.searchClosestOtherTank(rootBlue,node->tank,0);
-        kdTree::node* checkred = tree.searchClosestOtherTank(rootRed,node->tank,0);
-        kdTree::node* closest = tree.getclosest(node->tank, checkblue, checkred);
+        KdTree::node* checkblue = tree.search_closest_other_tank(rootBlue,node->tank,0);
+        KdTree::node* checkred = tree.search_closest_other_tank(rootRed,node->tank,0);
+        KdTree::node* closest = tree.get_closest(node->tank, checkblue, checkred);
 
         vec2 dir = node->tank->get_position() - closest->tank->get_position(); 
         float dir_squared_len = dir.sqr_length();
@@ -341,10 +341,10 @@ void Game::update_rockets() {
         Tank* tank; 
 
         if (rocket->allignment == RED) {
-            tank = tree.searchClosest(rootBlue, rocket->position, 0)->tank;
+            tank = tree.search_closest(rootBlue, rocket->position, 0)->tank;
         }
         else if (rocket->allignment == BLUE) {
-            tank = tree.searchClosest(rootRed, rocket->position, 0)->tank;
+            tank = tree.search_closest(rootRed, rocket->position, 0)->tank;
         }
 
         if (rocket->intersects(tank->position, tank->collision_radius))
@@ -465,13 +465,13 @@ void Game::update(float deltaTime)
     //if one tree no 2 lists and no 2 list deletes.
     tobesortedchilderen = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen,0);
 
-    rootBlue = tree.insertnodes(tobesortedchilderen, 0);
+    rootBlue = tree.insert_nodes(tobesortedchilderen, 0);
 
     tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
 
     tobesortedchilderen = *tree.get_tobe_sortedlist(rootRed, &tobesortedchilderen,0);
 
-    rootRed = tree.insertnodes(tobesortedchilderen, 0);
+    rootRed = tree.insert_nodes(tobesortedchilderen, 0);
 
     tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
 

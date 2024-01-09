@@ -2,45 +2,46 @@
 #include "kdTree.h"
 
 namespace Tmpl8 {
-	kdTree::kdTree()
+	KdTree::KdTree()
 	{
 
 	}
+
+    struct node
+    {
+        Tank* tank;
+        struct node* left;
+        struct node* right;
+
+    };
 
     /// <summary>
     /// creates a new node
     /// </summary>
     /// <param name="tank"> a pointer to a tank </param>
     /// <returns>returns a pointer to the just made node</returns>
-    kdTree::node* kdTree::newnode(Tank* tank)
+    KdTree::node* KdTree::newnode(Tank* tank)
 	{
-
-        struct node* node
-            = (struct node*)malloc(sizeof(struct node));
-
-        node->tank = tank;
-        node->left = NULL;
-        node->right = NULL;
-
-        return node;
+        struct node* temp = new node;
+        temp->tank = tank;
+        return temp;
         
 	}
     
-
     /// <summary>
     /// creates a new tree based of the list of existing nodes
     /// its sorts the list and then finds the median of the list and then split them in sublists and give it to the childnodes
     /// </summary>
     /// <param name="list">the list of existing nodes</param>
-    /// <param name="i">the depth of the tree</param>
+    /// <param name="depth">the depth of the tree</param>
     /// <returns>the new root node of the tree</returns>
-    kdTree::node* kdTree::insertnodes(vector<node*> list, int i)
+    KdTree::node* KdTree::insert_nodes(vector<node*> list, int depth)
     {
         if (list.size() == 0) {
             return NULL;
         }
 
-        list = sortnodes(list, i);
+        list = sort_nodes(list, depth);
 
 
         int medianindex = (list.size()-1)/2;
@@ -59,16 +60,16 @@ namespace Tmpl8 {
             return NULL;
         }
         
-        i = i + 1;
+        depth = depth + 1;
 
         if (endL >= 0) { //if list left has potential kids
             vector<node*> ListL = vector<node*>(list.begin(), list.begin() + endL);
-            median->left = insertnodes(ListL, i);
+            median->left = insert_nodes(ListL, depth);
         }
 
         if (beginR <= list.size()) {//if list right has potential kids
             vector<node*> ListR = vector<node*>(list.begin() + beginR, list.end());
-            median->right = insertnodes(ListR, i);
+            median->right = insert_nodes(ListR, depth);
         }
 
         return median;
@@ -80,13 +81,13 @@ namespace Tmpl8 {
     /// it then checks if its at a even or uneven depth.
     /// even depths means its getting checked on the x axis
     /// on uneven depths its getting checked on y axis.
-    /// theorie from : https://www.youtube.com/watch?v=Glp7THUpGow
+    /// theory from : https://www.youtube.com/watch?v=Glp7THUpGow
     /// </summary>
     /// <param name="root">root node of the tree</param>
     /// <param name="tank">the tank of which its position is used to see which node is closest</param>
-    /// <param name="i">the currrent depth of the tree</param>
+    /// <param name="depth">the currrent depth of the tree</param>
     /// <returns>the node that is the closest</returns>
-    kdTree::node* kdTree::searchClosest(node* root, vec2 point, int i) {
+    KdTree::node* KdTree::search_closest(node* root, vec2 point, int depth) {
 
         if (root == NULL) {
             return NULL;
@@ -96,7 +97,7 @@ namespace Tmpl8 {
         node* otherbranch;
 
         //if i aka the depth is even that means the check happens on x axis, otherwise it happens on the y axis
-        if (( point.x< root->tank->position.x && i%2==0)||(point.y < root->tank->position.y && i % 2 != 0)) { //if target is left
+        if (( point.x< root->tank->position.x && depth%2==0)||(point.y < root->tank->position.y && depth % 2 != 0)) { //if target is left
 
             closestbranch = root->left;
             otherbranch = root->right;
@@ -108,19 +109,19 @@ namespace Tmpl8 {
             otherbranch = root->left;
         }
 
-        node* temp = searchClosest(closestbranch, point, i + 1);
+        node* temp = search_closest(closestbranch, point, depth + 1);
 
-        node* closest = getclosest(point, temp, root);
+        node* closest = get_closest(point, temp, root);
 
-        float distanceclosest = getdistancesquared(closest->tank->position, point, 0) + getdistancesquared(closest->tank->position, point, 1); // calculation of r
+        float distanceclosest = get_distance_squared(closest->tank->position, point, 0) + get_distance_squared(closest->tank->position, point, 1); // calculation of r
 
-        if (getdistancesquared(root->tank->position,point, i)<= distanceclosest) {
+        if (get_distance_squared(root->tank->position,point, depth)<= distanceclosest) {
             //calculation of r' and see if its smaller.
             //depending on the depth check if the distance to the other branch is not smaller.
 
-            node* temp = searchClosest(otherbranch, point, i + 1);
+            node* temp = search_closest(otherbranch, point, depth + 1);
 
-            closest = getclosest(point, temp, closest);
+            closest = get_closest(point, temp, closest);
         }
 
         return closest;
@@ -131,9 +132,9 @@ namespace Tmpl8 {
     /// </summary>
     /// <param name="root">root of the tree</param>
     /// <param name="tank"> the tank of which the closest is being checked</param>
-    /// <param name="i">depth</param>
+    /// <param name="depth">depth</param>
     /// <returns>the node with closest tank in this tree</returns>
-    kdTree::node* kdTree::searchClosestOtherTank(node* root, Tank* tank, int i)
+    KdTree::node* KdTree::search_closest_other_tank(node* root, Tank* tank, int depth)
     {
         if (root == NULL) {
             return NULL;
@@ -143,7 +144,7 @@ namespace Tmpl8 {
         node* otherbranch;
 
         //if i aka the depth is even that means the check happens on x axis, otherwise it happens on the y axis
-        if ((tank->position.x < root->tank->position.x && i % 2 == 0) || (tank->position.y < root->tank->position.y && i % 2 != 0)) { //if target is left
+        if ((tank->position.x < root->tank->position.x && depth % 2 == 0) || (tank->position.y < root->tank->position.y && depth % 2 != 0)) { //if target is left
 
             closestbranch = root->left;
             otherbranch = root->right;
@@ -154,19 +155,19 @@ namespace Tmpl8 {
             otherbranch = root->left;
         }
 
-        node* temp = searchClosestOtherTank(closestbranch, tank,i + 1);
+        node* temp = search_closest_other_tank(closestbranch, tank,depth + 1);
 
-        node* closest = getclosest(tank, temp, root);
+        node* closest = get_closest(tank, temp, root);
 
-        float distanceclosest = getdistancesquared(closest->tank->position, tank->position, 0) + getdistancesquared(closest->tank->position, tank->position, 1); // calculation of r
+        float distanceclosest = get_distance_squared(closest->tank->position, tank->position, 0) + get_distance_squared(closest->tank->position, tank->position, 1); // calculation of r
 
-        if (getdistancesquared(root->tank->position, tank->position, i) <= distanceclosest) {
+        if (get_distance_squared(root->tank->position, tank->position, depth) <= distanceclosest) {
             //calculation of r' and see if its smaller.
             //depending on the depth check if the distance to the other branch is not smaller.
 
-            node* temp = searchClosestOtherTank(otherbranch, tank, i + 1);
+            node* temp = search_closest_other_tank(otherbranch, tank, depth + 1);
 
-            closest = getclosest(tank, temp, closest);
+            closest = get_closest(tank, temp, closest);
         }
 
         return closest;
@@ -179,7 +180,7 @@ namespace Tmpl8 {
     /// <param name="node1"> the first node which is checked </param>
     /// <param name="node2"> the second node thats being checked </param>
     /// <returns> the node thats closest to the target.</returns>
-    kdTree::node* kdTree::getclosest(vec2 target, node* node1, node* node2)
+    KdTree::node* KdTree::get_closest(vec2 target, node* node1, node* node2)
     {
         if (node1 == NULL){
             return node2;
@@ -209,7 +210,7 @@ namespace Tmpl8 {
     /// <param name="node1">the first node which is checked </param>
     /// <param name="node2"> the second node thats being checked </param>
     /// <returns> the node thats closest to the target.</returns>
-    kdTree::node* kdTree::getclosest(Tank* target, node* node1, node* node2)
+    KdTree::node* KdTree::get_closest(Tank* target, node* node1, node* node2)
     {
         if (node1 == NULL) {
             return node2;
@@ -228,7 +229,7 @@ namespace Tmpl8 {
         }
 
 
-        if (getdistancesquared(node1->tank->position, target->position,0) + getdistancesquared(node1->tank->position, target->position,1) < getdistancesquared(node2->tank->position, target->position, 0) + getdistancesquared(node2->tank->position, target->position, 1)) {
+        if (get_distance_squared(node1->tank->position, target->position,0) + get_distance_squared(node1->tank->position, target->position,1) < get_distance_squared(node2->tank->position, target->position, 0) + get_distance_squared(node2->tank->position, target->position, 1)) {
 
             return node1;
         }
@@ -242,21 +243,21 @@ namespace Tmpl8 {
     /// </summary>
     /// <param name="root">the root node </param>
     /// <param name="tobesortedchilderen">the list that will be filled with kids</param>
-    /// <param name="i">the depths of the tree</param>
+    /// <param name="depth">the depths of the tree</param>
     /// <returns>returns the filled list</returns>
-    vector<kdTree::node*>* kdTree::get_tobe_sortedlist(node* root, vector<node*>* tobesortedchilderen, int i)
+    vector<KdTree::node*>* KdTree::get_tobe_sortedlist(node* root, vector<node*>* tobesortedchilderen, int depth)
     {
         if (root == NULL) {
             return tobesortedchilderen;
         }
         
         if (root->left != NULL) {
-            tobesortedchilderen = get_tobe_sortedlist(root->left, tobesortedchilderen, i + 1);
+            tobesortedchilderen = get_tobe_sortedlist(root->left, tobesortedchilderen, depth + 1);
         }
 
 
         if (root->right != NULL) {
-            tobesortedchilderen = get_tobe_sortedlist(root->right, tobesortedchilderen, i + 1);
+            tobesortedchilderen = get_tobe_sortedlist(root->right, tobesortedchilderen, depth + 1);
         }
 
         
@@ -274,9 +275,9 @@ namespace Tmpl8 {
     /// sort the nodes based on x or y 
     /// </summary>
     /// <param name="list"> the list of nodes to be sorted</param>
-    /// <param name="i"> the depth which determines whether x or y even x uneven y</param>
+    /// <param name="depth"> the depth which determines whether x or y even x uneven y</param>
     /// <returns>the sorted list</returns>
-    vector<kdTree::node*> kdTree::sortnodes(vector<node*> list, int y)
+    vector<KdTree::node*> KdTree::sort_nodes(vector<node*> list, int depth)
     {
         for ( int i = 0; i < list.size(); i++)
         {
@@ -286,7 +287,7 @@ namespace Tmpl8 {
 
                 node* checkingnode = list[s];
 
-                if (y % 2 == 0) {
+                if (depth % 2 == 0) {
                     if (currentnode->tank->position.x < checkingnode->tank->position.x) {
 
                         list[s] = currentnode;
@@ -302,12 +303,12 @@ namespace Tmpl8 {
                         break;
                     }
                 }
-                else if (y % 2 != 0) {
-                    if (currentnode->tank->position.y < checkingnode->tank->position.y && y % 2 != 0) {
+                else if (depth % 2 != 0) {
+                    if (currentnode->tank->position.y < checkingnode->tank->position.y && depth % 2 != 0) {
                         list[s] = currentnode;
                         list[s + 1] = checkingnode;
                     }
-                    else if (currentnode->tank->position.y == checkingnode->tank->position.y && currentnode->tank->position.x < checkingnode->tank->position.x && y % 2 != 0) {
+                    else if (currentnode->tank->position.y == checkingnode->tank->position.y && currentnode->tank->position.x < checkingnode->tank->position.x && depth % 2 != 0) {
                         list[s] = currentnode;
                         list[s + 1] = checkingnode;
                     }
@@ -327,11 +328,11 @@ namespace Tmpl8 {
     /// </summary>
     /// <param name="t1">first vector </param>
     /// <param name="t2">second vector </param>
-    /// <param name="i"> depth of the tree, determines wether x or y axis</param>
+    /// <param name="depth"> depth of the tree, determines wether x or y axis</param>
     /// <returns> the squared floatnumber </returns>
-    float kdTree::getdistancesquared(vec2 t1, vec2 t2, int i )
+    float KdTree::get_distance_squared(vec2 t1, vec2 t2, int depth )
     {
-        if (i % 2 == 0) {
+        if (depth % 2 == 0) {
             return (t1.x - t2.x) * (t1.x - t2.x);
         }
         else
