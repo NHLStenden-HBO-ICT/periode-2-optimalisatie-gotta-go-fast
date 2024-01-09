@@ -17,6 +17,7 @@ namespace Tmpl8 {
 
     /// <summary>
     /// creates a new node
+    /// this does leak memory but since we only create KD trees at initialization and never delete them or create new ones it doesn't matter in this use case.
     /// </summary>
     /// <param name="tank"> a pointer to a tank </param>
     /// <returns>returns a pointer to the just made node</returns>
