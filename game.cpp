@@ -217,36 +217,42 @@ void Game::nudge_and_collide_tanks() {
 // -----------------------------------------------------------
 void Game::update_tanks() {
 
-    for (Tank& tank : tanks)
+    for (int i = 0; i<tanks.size();i++)
     {
-        if (tank.active)
-        {
-            //Move tanks according to speed and nudges (see above) also reload
-            tank.tick(background_terrain);
-
-            //Shoot at closest target if reloaded
-            if (tank.rocket_reloaded())
-            {
-                Tank& target = find_closest_enemy(tank);
-
-                //cout << "instancing rocket" << endl;
-                Rocket* rocket = rockets_pool.get();
-
-                rocket->active = true;
-                rocket->allignment = tank.allignment;
-                rocket->collision_radius = rocket_radius;
-                rocket->current_frame = 0;
-                rocket->position = tank.position;
-                rocket->speed = (target.get_position() - tank.position).normalized() * rocket_speed_multiplier;
-                rocket->rocket_sprite = ((tank.allignment == RED) ? &rocket_red : &rocket_blue);
-                //cout << rockets_pool.to_string();
-                //rockets.push_back(Rocket(tank.position, (target.get_position() - tank.position).normalized() * 3, rocket_radius, tank.allignment, ((tank.allignment == RED) ? &rocket_red : &rocket_blue)));
-
-                tank.reload_rocket();
-            }
-        }
+        threadpool.enqueue([=] {tankupdatethread(i); });
     }
     
+}
+
+void Game::tankupdatethread(int i) {
+    Tank& tank = tanks.at(i);
+
+    if (tank.active)
+    {
+        //Move tanks according to speed and nudges (see above) also reload
+        tank.tick(background_terrain);
+
+        //Shoot at closest target if reloaded
+        if (tank.rocket_reloaded())
+        {
+            Tank& target = find_closest_enemy(tank);
+
+            //cout << "instancing rocket" << endl;
+            Rocket* rocket = rockets_pool.get();
+
+            rocket->active = true;
+            rocket->allignment = tank.allignment;
+            rocket->collision_radius = rocket_radius;
+            rocket->current_frame = 0;
+            rocket->position = tank.position;
+            rocket->speed = (target.get_position() - tank.position).normalized() * rocket_speed_multiplier;
+            rocket->rocket_sprite = ((tank.allignment == RED) ? &rocket_red : &rocket_blue);
+            //cout << rockets_pool.to_string();
+            //rockets.push_back(Rocket(tank.position, (target.get_position() - tank.position).normalized() * 3, rocket_radius, tank.allignment, ((tank.allignment == RED) ? &rocket_red : &rocket_blue)));
+
+            tank.reload_rocket();
+        }
+    }
 }
 
 // -----------------------------------------------------------
