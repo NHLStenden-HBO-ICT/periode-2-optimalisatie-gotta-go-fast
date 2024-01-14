@@ -125,11 +125,7 @@ void Game::init()
         }
     }
 
-    cout << bluelist.size() - 1 << endl;//debug
-
     rootBlue = tree.insertnodes(bluelist,0);
-
-    cout << redlist.size() - 1 << endl; //debug
 
     rootRed = tree.insertnodes(redlist, 0);
 
@@ -188,26 +184,36 @@ void Game::nudge_and_collide_tanks() {
 
     vector<kdTree::node*> nodes = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen, 0);
     nodes = *tree.get_tobe_sortedlist(rootRed, &nodes, 0);
-
+    vector<future<void>> futures_list;
+    futures_list.reserve(num_tanks);
     for (kdTree::node* node : nodes) 
     {
-        kdTree::node* checkblue = tree.searchClosestOtherTank(rootBlue, node->tank, 0);
-        kdTree::node* checkred = tree.searchClosestOtherTank(rootRed, node->tank, 0);
-        kdTree::node* closest = tree.getclosest(node->tank, checkblue, checkred);
+        futures_list.emplace_back(threadpool.enqueue([=] {nudge_and_collide_tank(node, rootBlue, rootRed); }));
+    }
 
-        vec2 dir = node->tank->get_position() - closest->tank->get_position();
-        float dir_squared_len = dir.sqr_length();
-
-        float col_squared_len = (node->tank->get_collision_radius() + closest->tank->get_collision_radius());
-        col_squared_len *= col_squared_len;
-
-        if (dir_squared_len < col_squared_len)
-        {
-            node->tank->push(dir.normalized(), 1.f);
-        }
+    for (future<void>& future : futures_list) {
+        future.wait();
     }
 
     tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
+}
+
+void Tmpl8::Game::nudge_and_collide_tank(kdTree::node* node, kdTree::node* rootblue, kdTree::node* rootred)
+{
+    kdTree::node* checkblue = tree.searchClosestOtherTank(rootBlue, node->tank, 0);
+    kdTree::node* checkred = tree.searchClosestOtherTank(rootRed, node->tank, 0);
+    kdTree::node* closest = tree.getclosest(node->tank, checkblue, checkred);
+
+    vec2 dir = node->tank->get_position() - closest->tank->get_position();
+    float dir_squared_len = dir.sqr_length();
+
+    float col_squared_len = (node->tank->get_collision_radius() + closest->tank->get_collision_radius());
+    col_squared_len *= col_squared_len;
+
+    if (dir_squared_len < col_squared_len)
+    {
+        node->tank->push(dir.normalized(), 1.f);
+    }
 }
 
 // -----------------------------------------------------------
@@ -217,15 +223,20 @@ void Game::nudge_and_collide_tanks() {
 // -----------------------------------------------------------
 void Game::update_tanks() {
 
-    for (int i = 0; i<tanks.size();i++)
+    vector<kdTree::node*> nodes = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen, 0);
+    nodes = *tree.get_tobe_sortedlist(rootRed, &nodes, 0);
+
+    for (kdTree::node* node : nodes)
     {
-        threadpool.enqueue([=] {tankupdatethread(i); });
+        update_tank(node, background_terrain, rockets_pool);
     }
-    
+
+    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
 }
 
-void Game::tankupdatethread(int i) {
-    Tank& tank = tanks.at(i);
+void Game::update_tank(kdTree::node* node, Terrain& background_terrain, ObjectPool<Rocket>& rocketpool) {
+
+    Tank& tank = *node->tank;
 
     if (tank.active)
     {
@@ -238,7 +249,7 @@ void Game::tankupdatethread(int i) {
             Tank& target = find_closest_enemy(tank);
 
             //cout << "instancing rocket" << endl;
-            Rocket* rocket = rockets_pool.get();
+            Rocket* rocket = rocketpool.get();
 
             rocket->active = true;
             rocket->allignment = tank.allignment;
@@ -261,7 +272,7 @@ void Game::tankupdatethread(int i) {
 // n is the amount of smoke
 // -----------------------------------------------------------
 void Game::update_smoke() {
-    for (Smoke smoke :smokes){
+    for (Smoke& smoke :smokes){
         smoke.tick();
     }
 }
@@ -376,8 +387,6 @@ void Game::update_rockets() {
 
     }
 
-    
-
     //Disable rockets if they collide with the "forcefield"
     //Hint: A point to convex hull intersection test might be better here? :) (Disable if outside)
     for (auto rocket_iterator = rockets_pool.used_items.begin(); rocket_iterator != rockets_pool.used_items.end(); )
@@ -408,7 +417,10 @@ void Game::update_rockets() {
     //Remove exploded rockets with remove erase idiom
     //rockets.erase(std::remove_if(rockets.begin(), rockets.end(), [](const Rocket& rocket) { return !rocket.active; }), rockets.end());
 }
+void Tmpl8::Game::update_rocket_tank_collision()
+{
 
+}
 // -----------------------------------------------------------
 //Update particle beams
 // O(n)=n*m
@@ -416,8 +428,20 @@ void Game::update_rockets() {
 // m is the amount of Particle beams
 // -----------------------------------------------------------
 void Game::update_particle_beams() {
-    for (Particle_beam& particle_beam : particle_beams)
-    {
+
+    vector<future<void>> futures_list;
+    futures_list.reserve(particle_beams.size());
+
+    for (int i = 0; i < particle_beams.size(); i++) {
+        futures_list.emplace_back(threadpool.enqueue([=] {update_particle_beam(particle_beams, i, tanks, smokes); }));
+    }
+
+    for (future<void>& future : futures_list) {
+        future.wait();
+    }
+
+    /*
+    for (Particle_beam& particle_beam : particle_beams) {
         particle_beam.tick(tanks); //wHY USE TANKS?
 
         //Damage all tanks within the damage window of the beam (the window is an axis-aligned bounding box)
@@ -429,6 +453,25 @@ void Game::update_particle_beams() {
                 {
                     smokes.push_back(Smoke(smoke, tank.position - vec2(0, 48)));
                 }
+            }
+        }
+    }
+    */
+}
+
+void Tmpl8::Game::update_particle_beam(vector<Particle_beam>& particle_beams, int index, vector<Tank>& tanks, vector<Smoke>& smokes)
+{
+    Particle_beam& particle_beam = particle_beams.at(index);
+    particle_beam.tick(tanks); //wHY USE TANKS?
+
+    //Damage all tanks within the damage window of the beam (the window is an axis-aligned bounding box)
+    for (Tank& tank : tanks)
+    {
+        if (tank.active && particle_beam.rectangle.intersects_circle(tank.get_position(), tank.get_collision_radius()))
+        {
+            if (tank.hit(particle_beam.damage))
+            {
+                smokes.push_back(Smoke(smoke, tank.position - vec2(0, 48)));
             }
         }
     }
@@ -463,25 +506,30 @@ void Game::update(float deltaTime)
     {
         init_tank_routes();
     }
-    
+
 
     nudge_and_collide_tanks();
+
     update_tanks();
 
-    rootBlue = tree.insertnodes(*tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderenblue, 0) , 0);
+    auto root_blue_future = threadpool.enqueue([=] {sort_nodes(&rootBlue, &tobesortedchilderenblue); });
+    auto root_red_future = threadpool.enqueue([=] {sort_nodes(&rootRed, &tobesortedchilderenred); });
 
-    tobesortedchilderenblue.erase(tobesortedchilderenblue.begin(), tobesortedchilderenblue.end());
+    auto particle_beams_future = threadpool.enqueue([=] {update_particle_beams(); });
+    auto find_concave_hull_future = threadpool.enqueue([=] {find_concave_hull(); });
 
-    rootRed = tree.insertnodes(*tree.get_tobe_sortedlist(rootRed, &tobesortedchilderenred, 0), 0);
+    find_concave_hull_future.wait();
+    particle_beams_future.wait();
+    root_blue_future.wait();
+    root_red_future.wait();
 
-    tobesortedchilderenred.erase(tobesortedchilderenred.begin(), tobesortedchilderenred.end());
+    update_rockets();
 
-    threadpool.enqueue([=] {update_smoke(); });
-    threadpool.enqueue([=] {find_concave_hull(); });
-    threadpool.enqueue([=] {update_rockets(); });
-    threadpool.enqueue([=] {update_particle_beams(); });
+    auto smoke_future = threadpool.enqueue([=] {update_smoke(); });
+    auto explosions_future = threadpool.enqueue([=] {update_explosions(); });
 
-    threadpool.enqueue([=] { update_explosions(); });
+    smoke_future.wait();
+    explosions_future.wait();
 }
 
 // -----------------------------------------------------------
@@ -642,6 +690,15 @@ void Tmpl8::Game::measure_performance()
         frame_count_font->centre(screen, buffer, 340);
     }
 }
+
+void Tmpl8::Game::sort_nodes(kdTree::node** root, vector<kdTree::node*>* tobesortedchilderen)
+{
+    *root = tree.insertnodes(*tree.get_tobe_sortedlist(*root, tobesortedchilderen, 0), 0);
+
+    tobesortedchilderen->erase(tobesortedchilderen->begin(), tobesortedchilderen->end());
+}
+
+
 
 // -----------------------------------------------------------
 // Main application tick function
