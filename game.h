@@ -27,7 +27,6 @@ class Game
     void nudge_and_collide_tank(kdTree::node* node, kdTree::node* rootblue, kdTree::node* rootred);
     void update_tank(kdTree::node* node, Terrain& background_terrain, ObjectPool<Rocket>& rocketpool);
     void update_particle_beam(vector<Particle_beam>& particle_beams, int index, vector<Tank>& tanks, vector<Smoke>& smokes);
-    void update_rocket_tank_collision();
 
     Tank& find_closest_enemy(Tank& current_tank);
 

@@ -417,10 +417,8 @@ void Game::update_rockets() {
     //Remove exploded rockets with remove erase idiom
     //rockets.erase(std::remove_if(rockets.begin(), rockets.end(), [](const Rocket& rocket) { return !rocket.active; }), rockets.end());
 }
-void Tmpl8::Game::update_rocket_tank_collision()
-{
 
-}
+
 // -----------------------------------------------------------
 //Update particle beams
 // O(n)=n*m
