@@ -53,26 +53,18 @@ ObjectPool<Rocket> rockets_pool = ObjectPool<Rocket>{ num_tanks * 2,
         &rocket_red
 } };
 
-KdTree::node* rootBlue;
-KdTree::node* rootRed;
+KdTree::node* root_Blue;
+KdTree::node* root_Red;
 
-vector<KdTree::node*> tobesortedchilderen;
+vector<KdTree::node*> to_be_sorted_childeren_blue;
+vector<KdTree::node*> to_be_sorted_childeren_red;
+vector<KdTree::node*> to_be_sorted_childeren;
 KdTree tree;
+static ThreadPool threadpool = ThreadPool(std::thread::hardware_concurrency());
 
-//===========================================
-// Main bottlenecks
-// ~ Single threading
-// ~ nudge_and_collide_tanks (n^2)
-// ~ update_tanks (n^2)
-//===========================================
-
-
-
-// -----------------------------------------------------------
-// Initialize the simulation state
-// This function does not count for the performance multiplier
-// (Feel free to optimize anyway though ;) )
-// -----------------------------------------------------------
+/// <summary>
+/// initializing game
+/// </summary>
 void Game::init()
 {
     tree = KdTree();
@@ -124,52 +116,49 @@ void Game::init()
         }
     }
 
-    cout << bluelist.size() - 1 << endl;//debug
 
-    rootBlue = tree.insert_nodes(bluelist,0);
-
-    cout << redlist.size() - 1 << endl; //debug
-
-    rootRed = tree.insert_nodes(redlist, 0);
+    root_Blue = tree.insert_nodes(bluelist,0);
+    root_Red = tree.insert_nodes(redlist, 0);
 
 }
 
-// -----------------------------------------------------------
-// Close down application
-// -----------------------------------------------------------
+/// <summary>
+/// Close down application
+/// </summary>
 void Game::shutdown()
 {
 }
 
-// -----------------------------------------------------------
-// Iterates through all tanks and returns the closest enemy tank for the given tank
-// O(n)=n
-// n is the amount of tanks
-// -----------------------------------------------------------
+/// <summary>
+/// Iterates through all tanks and returns the closest enemy tank for the given tank
+/// </summary>
+/// <param name="current_tank">tank of which closest needs to be found</param>
+/// <returns>the closest enemy</returns>
 Tank& Game::find_closest_enemy(Tank& current_tank)
 {
     if (current_tank.allignment == RED) {
-        return *tree.search_closest(rootBlue, current_tank.position,0)->tank;
+        return *tree.search_closest(root_Blue, current_tank.position,0)->tank;
     }    
     else if (current_tank.allignment == BLUE) {
-        return *tree.search_closest(rootRed, current_tank.position,0)->tank;
+        return *tree.search_closest(root_Red, current_tank.position,0)->tank;
     }
 }
 
-// -----------------------------------------------------------
-// Checks if a point lies on the left of an arbitrary angled line
-// -----------------------------------------------------------
+/// <summary>
+/// Checks if a point lies on the left of an arbitrary angled line
+/// </summary>
+/// <param name="line_start">start of arbitrary angled line</param>
+/// <param name="line_end">end of arbitrary angled line</param>
+/// <param name="point">the point which is checked</param>
+/// <returns>a bool gives true if point lies on the left of an arbitrary angled line</returns>
 bool Tmpl8::Game::left_of_line(vec2 line_start, vec2 line_end, vec2 point)
 {
     return ((line_end.x - line_start.x) * (point.y - line_start.y) - (line_end.y - line_start.y) * (point.x - line_start.x)) < 0;
 }
 
-// -----------------------------------------------------------
-// Calculate the route to the destination for each tank using BFS
-// O(n)=n*m 
-// n is the amount of tanks
-// m is the amount of terain exits that is used in get route
-// -----------------------------------------------------------
+/// <summary>
+/// Calculate the route to the destination for each tank using BFS
+/// </summary>
 void Game::init_tank_routes() {
     for (Tank& t : tanks)
     {
@@ -178,42 +167,59 @@ void Game::init_tank_routes() {
 }
 
 /// <summary>
-/// the function that calculates the colides and nudges of the tanks.
-/// it first gathers all active tanks in a list based on the two trees.
-/// it uses the kd tree to see which is closest of the red and blue tree each and then compares the two to see which one is truly the closest.
-/// it then calculates wether a nudge must happen or not.
+/// Main nudge and collide function that checks for each node.
+/// Add for each node a task to threadpool and put the future of that in a list
+/// Main thread can only continue when all threads are finished.
 /// </summary>
 void Game::nudge_and_collide_tanks() {
 
-    vector<KdTree::node*> nodes = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen, 0);
-    nodes = *tree.get_tobe_sortedlist(rootRed, &nodes, 0);
+    vector<KdTree::node*> nodes = *tree.get_tobe_sortedlist(root_Blue, &to_be_sorted_childeren, 0);
+    nodes = *tree.get_tobe_sortedlist(root_Red, &nodes, 0);
 
+
+    vector<future<void>> futures_list;
+    futures_list.reserve(num_tanks);
     for (KdTree::node* node : nodes) 
     {
-        KdTree::node* checkblue = tree.search_closest_other_tank(rootBlue,node->tank,0);
-        KdTree::node* checkred = tree.search_closest_other_tank(rootRed,node->tank,0);
-        KdTree::node* closest = tree.get_closest(node->tank, checkblue, checkred);
-
-        vec2 dir = node->tank->get_position() - closest->tank->get_position(); 
-        float dir_squared_len = dir.sqr_length();
-
-        float col_squared_len = (node->tank->get_collision_radius() + closest->tank->get_collision_radius()); 
-        col_squared_len *= col_squared_len;
-
-        if (dir_squared_len < col_squared_len)
-        {
-            node->tank->push(dir.normalized(), 1.f); 
-        }
+        futures_list.emplace_back(threadpool.enqueue([=] {nudge_and_collide_tank(node, root_Blue, root_Red); }));
+    }
+    for (future<void>& future : futures_list) { 
+        future.wait();
     }
 
-    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
+    to_be_sorted_childeren.erase(to_be_sorted_childeren.begin(), to_be_sorted_childeren.end());
 }
 
-// -----------------------------------------------------------
-// Update tanks 
-// O(n^2)=n^2
-// n is the amount of tanks
-// -----------------------------------------------------------
+/// <summary>
+/// The function that calculates the colides and nudges of the tanks.
+/// It first gathers all active tanks in a list based on the two trees.
+/// It uses the kd tree to see which is closest of the red and blue tree each and then compares the two to see which one is truly the closest.
+/// It then calculates wether a nudge must happen or not.
+/// </summary>
+/// <param name="node">node which contains a tank of which the closests needs to be found</param>
+/// <param name="rootblue">the root of the blue tree</param>
+/// <param name="rootred">the root of the blue tree<</param>
+void Tmpl8::Game::nudge_and_collide_tank(KdTree::node* node, KdTree::node* rootblue, KdTree::node* rootred)
+{
+    KdTree::node* checkblue = tree.search_closest_other_tank(root_Blue, node->tank, 0);
+    KdTree::node* checkred = tree.search_closest_other_tank(root_Red, node->tank, 0);
+    KdTree::node* closest = tree.get_closest(node->tank, checkblue, checkred);
+
+    vec2 dir = node->tank->get_position() - closest->tank->get_position();
+    float dir_squared_len = dir.sqr_length();
+
+    float col_squared_len = (node->tank->get_collision_radius() + closest->tank->get_collision_radius());
+    col_squared_len *= col_squared_len;
+
+    if (dir_squared_len < col_squared_len)
+    {
+        node->tank->push(dir.normalized(), 1.f);
+    }
+}
+
+/// <summary>
+/// Update tanks function
+/// </summary>
 void Game::update_tanks() {
 
     for (Tank& tank : tanks)
@@ -227,10 +233,10 @@ void Game::update_tanks() {
             if (tank.rocket_reloaded())
             {
                 Tank& target = find_closest_enemy(tank);
-                
+
                 //cout << "instancing rocket" << endl;
                 Rocket* rocket = rockets_pool.get();
-                
+
                 rocket->active = true;
                 rocket->allignment = tank.allignment;
                 rocket->collision_radius = rocket_radius;
@@ -245,30 +251,23 @@ void Game::update_tanks() {
             }
         }
     }
-    
 }
 
-// -----------------------------------------------------------
-// Update smoke plumes
-// O(n)=n
-// n is the amount of smoke
-// -----------------------------------------------------------
+/// <summary>
+/// Update smoke plumes
+/// </summary>
 void Game::update_smoke() {
-    for (Smoke& smoke : smokes)
-    {
+    for (Smoke& smoke :smokes){
         smoke.tick();
     }
 }
 
-// -----------------------------------------------------------
-// Calculates a convex hull around all the tanks
-// O(n)=2*n
-// n is the amount of tanks
-// -----------------------------------------------------------
+/// <summary>
+/// Calculates a convex hull around all the tanks
+/// </summary>
 void Game::find_concave_hull() {
     //Calculate "forcefield" around active tanks
     forcefield_hull.clear();
-
 
    //Find first active tank (this loop is a bit disgusting, fix?)
     int first_active = 0;
@@ -282,6 +281,7 @@ void Game::find_concave_hull() {
     }
     vec2 point_on_hull = tanks.at(first_active).position;
     //Find left most tank position
+
     for (Tank& tank : tanks)
     {
         if (tank.active)
@@ -325,13 +325,9 @@ void Game::find_concave_hull() {
     }
 }
 
-// -----------------------------------------------------------
-// Loop over all the rockets, move and collide them with either the tanks or the concave hull
-// O(n)=n*m + n*k = n(m+k)
-// n is the amount of rockets
-// m is the amount of tanks
-// k is the size of the forcefield hull
-// -----------------------------------------------------------
+/// <summary>
+/// Loop over all the rockets, move and collide them with either the tanks or the concave hull
+/// </summary>
 void Game::update_rockets() {
     for (auto rocket_iterator = rockets_pool.used_items.begin(); rocket_iterator != rockets_pool.used_items.end(); )
     {
@@ -341,10 +337,10 @@ void Game::update_rockets() {
         Tank* tank; 
 
         if (rocket->allignment == RED) {
-            tank = tree.search_closest(rootBlue, rocket->position, 0)->tank;
+            tank = tree.search_closest(root_Blue, rocket->position, 0)->tank;
         }
         else if (rocket->allignment == BLUE) {
-            tank = tree.search_closest(rootRed, rocket->position, 0)->tank;
+            tank = tree.search_closest(root_Red, rocket->position, 0)->tank;
         }
 
         if (rocket->intersects(tank->position, tank->collision_radius))
@@ -369,8 +365,6 @@ void Game::update_rockets() {
         }
 
     }
-
-    
 
     //Disable rockets if they collide with the "forcefield"
     //Hint: A point to convex hull intersection test might be better here? :) (Disable if outside)
@@ -403,36 +397,54 @@ void Game::update_rockets() {
     //rockets.erase(std::remove_if(rockets.begin(), rockets.end(), [](const Rocket& rocket) { return !rocket.active; }), rockets.end());
 }
 
-// -----------------------------------------------------------
-//Update particle beams
-// O(n)=n*m
-// n is the amount of tanks
-// m is the amount of Particle beams
-// -----------------------------------------------------------
-void Game::update_particle_beams() {
-    for (Particle_beam& particle_beam : particle_beams)
-    {
-        particle_beam.tick(tanks);
 
-        //Damage all tanks within the damage window of the beam (the window is an axis-aligned bounding box)
-        for (Tank& tank : tanks)
+/// <summary>
+/// Update list particle beams
+/// Add each task to the list
+/// only let the main thread continue when all tasks are done.
+/// </summary>
+void Game::update_particle_beams() {
+
+    vector<future<void>> futures_list;
+    futures_list.reserve(particle_beams.size());
+
+    for (int i = 0; i < particle_beams.size(); i++) {
+        futures_list.emplace_back(threadpool.enqueue([=] {update_particle_beam(particle_beams, i, tanks, smokes); }));
+    }
+
+    for (future<void>& future : futures_list) {
+        future.wait();
+    }
+}
+
+/// <summary>
+/// update one particle beam
+/// </summary>
+/// <param name="particle_beams">list of particle beams</param>
+/// <param name="index">the index in the list of current particle beam </param>
+/// <param name="tanks">list of tanks</param>
+/// <param name="smokes">list of smokes</param>
+void Tmpl8::Game::update_particle_beam(vector<Particle_beam>& particle_beams, int index, vector<Tank>& tanks, vector<Smoke>& smokes)
+{
+    Particle_beam& particle_beam = particle_beams.at(index);
+    particle_beam.tick(tanks); //wHY USE TANKS?
+
+    //Damage all tanks within the damage window of the beam (the window is an axis-aligned bounding box)
+    for (Tank& tank : tanks)
+    {
+        if (tank.active && particle_beam.rectangle.intersects_circle(tank.get_position(), tank.get_collision_radius()))
         {
-            if (tank.active && particle_beam.rectangle.intersects_circle(tank.get_position(), tank.get_collision_radius()))
+            if (tank.hit(particle_beam.damage))
             {
-                if (tank.hit(particle_beam.damage))
-                {
-                    smokes.push_back(Smoke(smoke, tank.position - vec2(0, 48)));
-                }
+                smokes.push_back(Smoke(smoke, tank.position - vec2(0, 48)));
             }
         }
     }
 }
 
-// -----------------------------------------------------------
-//Update explosion sprites and remove when done with remove erase idiom
-// O(n)=n
-// n is the amount of explosions
-// -----------------------------------------------------------
+/// <summary>
+/// Update explosion tick function and remove when done with remove erase idiom
+/// </summary>
 void Game::update_explosions() {
     for (Explosion& explosion : explosions)
     {
@@ -443,13 +455,10 @@ void Game::update_explosions() {
 }
 
 
-// -----------------------------------------------------------
-// Update the game state:
-// Move all objects
-// Update sprite frames
-// Collision detection
-// Targeting etc..
-// -----------------------------------------------------------
+/// <summary>
+/// Update the game state
+/// </summary>
+/// <param name="deltaTime"></param>
 void Game::update(float deltaTime)
 {
     //Initializing routes here so it gets counted for performance..
@@ -457,43 +466,34 @@ void Game::update(float deltaTime)
     {
         init_tank_routes();
     }
-    
+
+
     nudge_and_collide_tanks();
-    
+
     update_tanks();
 
-    //if one tree no 2 lists and no 2 list deletes.
-    tobesortedchilderen = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen,0);
+    auto root_blue_future = threadpool.enqueue([=] {sort_nodes(&root_Blue, &to_be_sorted_childeren_blue); });
+    auto root_red_future = threadpool.enqueue([=] {sort_nodes(&root_Red, &to_be_sorted_childeren_red); });
+    auto particle_beams_future = threadpool.enqueue([=] {update_particle_beams(); });
+    auto find_concave_hull_future = threadpool.enqueue([=] {find_concave_hull(); });
 
-    rootBlue = tree.insert_nodes(tobesortedchilderen, 0);
+    find_concave_hull_future.wait();
+    particle_beams_future.wait();
+    root_blue_future.wait();
+    root_red_future.wait();
 
-    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
-
-    tobesortedchilderen = *tree.get_tobe_sortedlist(rootRed, &tobesortedchilderen,0);
-
-    rootRed = tree.insert_nodes(tobesortedchilderen, 0);
-
-    tobesortedchilderen.erase(tobesortedchilderen.begin(), tobesortedchilderen.end());
-
-
-    update_smoke();
-    
-    find_concave_hull();
-    
     update_rockets();
-    
-    update_particle_beams();
-    
-    update_explosions();    
 
-    
-    
+    auto smoke_future = threadpool.enqueue([=] {update_smoke(); });
+    auto explosions_future = threadpool.enqueue([=] {update_explosions(); });
+
+    smoke_future.wait();
+    explosions_future.wait();
 }
 
-// -----------------------------------------------------------
-// Draw all sprites to the screen
-// (It is not recommended to multi-thread this function)
-// -----------------------------------------------------------
+/// <summary>
+/// Draw all the sprites on screen
+/// </summary>
 void Game::draw()
 {
     // clear the graphics window
@@ -554,9 +554,13 @@ void Game::draw()
     }
 }
 
-// -----------------------------------------------------------
-// Sort tanks by health value using insertion sort
-// -----------------------------------------------------------
+/// <summary>
+/// Sort tanks by health value using insertion sort
+/// </summary>
+/// <param name="original">the original list of tanks</param>
+/// <param name="sorted_tanks">the sorted tanks</param>
+/// <param name="begin"></param>
+/// <param name="end"></param>
 void Tmpl8::Game::insertion_sort_tanks_health(const std::vector<Tank>& original, std::vector<const Tank*>& sorted_tanks, int begin, int end)
 {
     const int NUM_TANKS = end - begin;
@@ -586,9 +590,11 @@ void Tmpl8::Game::insertion_sort_tanks_health(const std::vector<Tank>& original,
     }
 }
 
-// -----------------------------------------------------------
-// Draw the health bars based on the given tanks health values
-// -----------------------------------------------------------
+/// <summary>
+/// draw the health bars
+/// </summary>
+/// <param name="sorted_tanks"></param>
+/// <param name="team"></param>
 void Tmpl8::Game::draw_health_bars(const std::vector<const Tank*>& sorted_tanks, const int team)
 {
     int health_bar_start_x = (team < 1) ? 0 : (SCRWIDTH - HEALTHBAR_OFFSET) - 1;
@@ -618,11 +624,11 @@ void Tmpl8::Game::draw_health_bars(const std::vector<const Tank*>& sorted_tanks,
     }
 }
 
-// -----------------------------------------------------------
-// When we reach max_frames print the duration and speedup multiplier
-// Updating REF_PERFORMANCE at the top of this file with the value
-// on your machine gives you an idea of the speedup your optimizations give
-// -----------------------------------------------------------
+/// <summary>
+/// When we reach max_frames print the duration and speedup multiplier
+/// Updating REF_PERFORMANCE at the top of this file with the value
+/// on your machine gives you an idea of the speedup your optimizations give
+/// </summary>
 void Tmpl8::Game::measure_performance()
 {
     char buffer[128];
@@ -649,9 +655,21 @@ void Tmpl8::Game::measure_performance()
     }
 }
 
-// -----------------------------------------------------------
-// Main application tick function
-// -----------------------------------------------------------
+/// <summary>
+/// the function that sorts the nodes
+/// </summary>
+/// <param name="root">the root</param>
+/// <param name="tobesortedchilderen">the tobesortedchilderen</param>
+void Tmpl8::Game::sort_nodes(KdTree::node** root, vector<KdTree::node*>* tobesortedchilderen)
+{
+    *root = tree.insert_nodes(*tree.get_tobe_sortedlist(*root, tobesortedchilderen, 0), 0);
+
+    tobesortedchilderen->erase(tobesortedchilderen->begin(), tobesortedchilderen->end());
+}
+
+/// <summary>
+/// Main application tick function
+/// </summary>
 void Game::tick(float deltaTime)
 {
     if (!lock_update)

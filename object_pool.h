@@ -35,6 +35,7 @@ namespace Tmpl8 {
 		/// </summary>
 		/// <returns>Pointer to an unused item</returns>
 		T* get() {
+			mtx.lock();
 			//get the index of the last free item in the deque
 			size_t index = free_items.size() - 1;
 			//get the pointer at that index
@@ -43,7 +44,7 @@ namespace Tmpl8 {
 			free_items.pop_back();
 			//add that pointer to the start of the used_items deque
 			used_items.emplace_front(ptr);
-			
+			mtx.unlock();
 			return ptr;
 		};
 
@@ -52,12 +53,15 @@ namespace Tmpl8 {
 		/// </summary>
 		/// <param name="iterator"> points to the item that will be freed</param>
 		typename deque<T*>::iterator free(typename deque<T*>::iterator it) {
+			mtx.lock();
 			//simply add the pointer at the index to the free items pool and then remove it from used items
 			//we do this with an iterator, though doing it by index would also be possible
 			//when I made this I was of the opinion that this was neater because it's now container agnositic. 
 			//If we want to switch from a deque to something else nothing needs to change
 			free_items.emplace_front(*it);
-			return used_items.erase(it);
+			deque<T*>::iterator return_value= used_items.erase(it);
+			mtx.unlock();
+			return return_value;
 			
 		};
 		
@@ -77,7 +81,7 @@ namespace Tmpl8 {
 		}
 	private:
 		size_t size;
-		
+		mutex mtx;
 	};
 }
 
