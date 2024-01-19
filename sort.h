@@ -210,8 +210,7 @@ namespace Tmpl8
 		/// Worst case peformance is O(n^2) comparisons and swaps. Best case peformance is O(n) comparisons and O(1) swaps. 
 		/// </summary>
 		/// <param name="vec_ref_original">A pointer to the unsorted data.</param>
-		/// <param name="compare">A function pointer to, or function object of, a function that returns a value that can be compared. 
-		/// This should compare the two instances.</param>
+		/// <param name="get">a pointer to a function that takes an instance of the templated class and returns a numerical value</param>
 		/// <param name="clss">A pointer to the instance of the class that this function belongs to</param>
 		static void insertion_sort(vector<T>& vector, Get get, Class clss) {
 
@@ -239,8 +238,7 @@ namespace Tmpl8
 		/// Worst case peformance is O(n^2) comparisons and swaps. Best case peformance is O(n) comparisons and O(1) swaps. 
 		/// </summary>
 		/// <param name="vec_ref_original">A pointer to the unsorted data.</param>
-		/// <param name="compare">A function pointer to, or function object of, a function that returns a value that can be compared. 
-		/// This should compare the two instances.</param>
+		/// <param name="get">a pointer to a function that takes an instance of the templated class and returns a numerical value</param>
 		/// <param name="clss">A pointer to the instance of the class that this function belongs to</param>
 		static void binary_insertion_sort(vector<T>& vector, Get get, Class clss) {
 
@@ -265,12 +263,12 @@ namespace Tmpl8
 	
 		
 		/// <summary>
-		/// 
+		/// this sorting algorithm finds stretches of sorted data and then uses a merging algorithm to merge those sorted parts together.
 		/// </summary>
-		/// <param name="input"></param>
-		/// <param name="result"></param>
-		/// <param name="get"></param>
-		/// <param name="clss"></param>
+		/// <param name="input">a vector that contains classes that should be sorted</param>
+		/// <param name="result">a vector that will contain the sorted results</param>
+		/// <param name="get">a pointer to a function that takes an instance of the templated class and returns a numerical value</param>
+		/// <param name="clss">A pointer to the instance of the class that this function belongs to</param>
 		static void simplified_timsort(vector<T>& input, vector<T>& result, Get get, Class clss) {
 			//for since insertion sort algorithms work well on small arrays we won't bother with this algo if it the input is small
 			//cutoff point is arbitrary here. I did not get to test this.
