@@ -23,9 +23,9 @@ class Game
     void insertion_sort_tanks_health(const std::vector<Tank>& original, std::vector<const Tank*>& sorted_tanks, int begin, int end);
     void draw_health_bars(const std::vector<const Tank*>& sorted_tanks, const int team);
     void measure_performance();
-    void sort_nodes(kdTree::node** root, vector<kdTree::node*>* tobesortedchilderen);
-    void nudge_and_collide_tank(kdTree::node* node, kdTree::node* rootblue, kdTree::node* rootred);
-    void update_tank(kdTree::node* node, Terrain& background_terrain, ObjectPool<Rocket>& rocketpool);
+    void sort_nodes(KdTree::node** root, vector<KdTree::node*>* tobesortedchilderen);
+    void nudge_and_collide_tank(KdTree::node* node, KdTree::node* rootblue, KdTree::node* rootred);
+    void update_tank(KdTree::node* node, Terrain& background_terrain, ObjectPool<Rocket>& rocketpool);
     void update_particle_beam(vector<Particle_beam>& particle_beams, int index, vector<Tank>& tanks, vector<Smoke>& smokes);
 
     Tank& find_closest_enemy(Tank& current_tank);

@@ -53,21 +53,22 @@ ObjectPool<Rocket> rockets_pool = ObjectPool<Rocket>{ num_tanks * 2,
         &rocket_red
 } };
 
-kdTree::node* rootBlue;
-kdTree::node* rootRed;
+KdTree::node* rootBlue;
+KdTree::node* rootRed;
 
-vector<kdTree::node*> tobesortedchilderenblue;
-vector<kdTree::node*> tobesortedchilderenred;
-vector<kdTree::node*> tobesortedchilderen;
-kdTree tree;
+vector<KdTree::node*> tobesortedchilderenblue;
+vector<KdTree::node*> tobesortedchilderenred;
+vector<KdTree::node*> tobesortedchilderen;
+KdTree tree;
 static ThreadPool threadpool = ThreadPool(std::thread::hardware_concurrency());
+
 
 /// <summary>
 /// initializing game
 /// </summary>
 void Game::init()
 {
-    tree = kdTree();
+    tree = KdTree();
     frame_count_font = new Font("assets/digital_small.png", "ABCDEFGHIJKLMNOPQRSTUVWXYZ:?!=-0123456789.");
 
     tanks.reserve(num_tanks_blue + num_tanks_red);
@@ -104,8 +105,8 @@ void Game::init()
     //initialise tree first get root tank aka middlest tank 
 
     //if one tree no 2 lists.
-    vector<kdTree::node*> bluelist;
-    vector<kdTree::node*> redlist;
+    vector<KdTree::node*> bluelist;
+    vector<KdTree::node*> redlist;
 
     for (int y = 0; y < tanks.size(); y++ ) {
         if (tanks[y].allignment == BLUE) {
@@ -116,9 +117,9 @@ void Game::init()
         }
     }
 
-    rootBlue = tree.insertnodes(bluelist,0);
+    rootBlue = tree.insert_nodes(bluelist,0);
 
-    rootRed = tree.insertnodes(redlist, 0);
+    rootRed = tree.insert_nodes(redlist, 0);
 
 }
 
@@ -137,10 +138,10 @@ void Game::shutdown()
 Tank& Game::find_closest_enemy(Tank& current_tank)
 {
     if (current_tank.allignment == RED) {
-        return *tree.searchClosest(rootBlue, current_tank.position,0)->tank;
+        return *tree.search_closest(rootBlue, current_tank.position,0)->tank;
     }    
     else if (current_tank.allignment == BLUE) {
-        return *tree.searchClosest(rootRed, current_tank.position,0)->tank;
+        return *tree.search_closest(rootRed, current_tank.position,0)->tank;
     }
 }
 
@@ -173,15 +174,15 @@ void Game::init_tank_routes() {
 /// </summary>
 void Game::nudge_and_collide_tanks() {
 
-    vector<kdTree::node*> nodes = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen, 0);
+    vector<KdTree::node*> nodes = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen, 0);
     nodes = *tree.get_tobe_sortedlist(rootRed, &nodes, 0);
+
     vector<future<void>> futures_list;
     futures_list.reserve(num_tanks);
-    for (kdTree::node* node : nodes) 
+    for (KdTree::node* node : nodes) 
     {
         futures_list.emplace_back(threadpool.enqueue([=] {nudge_and_collide_tank(node, rootBlue, rootRed); }));
     }
-
     for (future<void>& future : futures_list) { 
         future.wait();
     }
@@ -198,11 +199,11 @@ void Game::nudge_and_collide_tanks() {
 /// <param name="node">node which contains a tank of which the closests needs to be found</param>
 /// <param name="rootblue">the root of the blue tree</param>
 /// <param name="rootred">the root of the blue tree<</param>
-void Tmpl8::Game::nudge_and_collide_tank(kdTree::node* node, kdTree::node* rootblue, kdTree::node* rootred)
+void Tmpl8::Game::nudge_and_collide_tank(KdTree::node* node, KdTree::node* rootblue, KdTree::node* rootred)
 {
-    kdTree::node* checkblue = tree.searchClosestOtherTank(rootBlue, node->tank, 0);
-    kdTree::node* checkred = tree.searchClosestOtherTank(rootRed, node->tank, 0);
-    kdTree::node* closest = tree.getclosest(node->tank, checkblue, checkred);
+    KdTree::node* checkblue = tree.search_closest_other_tank(rootBlue, node->tank, 0);
+    KdTree::node* checkred = tree.search_closest_other_tank(rootRed, node->tank, 0);
+    KdTree::node* closest = tree.get_closest(node->tank, checkblue, checkred);
 
     vec2 dir = node->tank->get_position() - closest->tank->get_position();
     float dir_squared_len = dir.sqr_length();
@@ -336,10 +337,10 @@ void Game::update_rockets() {
         Tank* tank; 
 
         if (rocket->allignment == RED) {
-            tank = tree.searchClosest(rootBlue, rocket->position, 0)->tank;
+            tank = tree.search_closest(rootBlue, rocket->position, 0)->tank;
         }
         else if (rocket->allignment == BLUE) {
-            tank = tree.searchClosest(rootRed, rocket->position, 0)->tank;
+            tank = tree.search_closest(rootRed, rocket->position, 0)->tank;
         }
 
         if (rocket->intersects(tank->position, tank->collision_radius))
@@ -474,6 +475,7 @@ void Game::update(float deltaTime)
     auto root_red_future = threadpool.enqueue([=] {sort_nodes(&rootRed, &tobesortedchilderenred); });
     auto particle_beams_future = threadpool.enqueue([=] {update_particle_beams(); });
     auto find_concave_hull_future = threadpool.enqueue([=] {find_concave_hull(); });
+
 
     find_concave_hull_future.wait();
     particle_beams_future.wait();
@@ -658,7 +660,7 @@ void Tmpl8::Game::measure_performance()
 /// </summary>
 /// <param name="root">the root</param>
 /// <param name="tobesortedchilderen">the tobesortedchilderen</param>
-void Tmpl8::Game::sort_nodes(kdTree::node** root, vector<kdTree::node*>* tobesortedchilderen)
+void Tmpl8::Game::sort_nodes(KdTree::node** root, vector<KdTree::node*>* tobesortedchilderen)
 {
     *root = tree.insertnodes(*tree.get_tobe_sortedlist(*root, tobesortedchilderen, 0), 0);
 
