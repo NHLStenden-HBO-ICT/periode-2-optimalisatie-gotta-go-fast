@@ -71,6 +71,7 @@ void Game::init()
     frame_count_font = new Font("assets/digital_small.png", "ABCDEFGHIJKLMNOPQRSTUVWXYZ:?!=-0123456789.");
 
     tanks.reserve(num_tanks_blue + num_tanks_red);
+    smokes.reserve(num_tanks_blue + num_tanks_red);
 
     uint max_rows = 24;
 
