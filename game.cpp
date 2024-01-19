@@ -551,10 +551,8 @@ void Game::draw()
         const int NUM_TANKS = ((t < 1) ? num_tanks_blue : num_tanks_red);
 
         const int begin = ((t < 1) ? 0 : num_tanks_blue);
-        std::vector<Tank*> sorted_tanks;
 
-        Sort<Tank*, int(Tmpl8::Game::*)(Tank*), Game* >::simplified_timsort(tank_ptrs_sorted_on_health, sorted_tanks, &Game::get_health_from_ptr, this);
-        tank_ptrs_sorted_on_health = sorted_tanks;
+        Sort<Tank*, int(Tmpl8::Game::*)(Tank*), Game* >::binary_insertion_sort(tank_ptrs_sorted_on_health, &Game::get_health_from_ptr, this);
         //insertion_sort_tanks_health(tanks, sorted_tanks, begin, begin + NUM_TANKS);
         tank_ptrs_sorted_on_health.erase(std::remove_if(tank_ptrs_sorted_on_health.begin(), tank_ptrs_sorted_on_health.end(), [](const Tank* tank) { return !tank->active; }), tank_ptrs_sorted_on_health.end());
 
@@ -598,13 +596,15 @@ void Tmpl8::Game::insertion_sort_tanks_health(const std::vector<Tank>& original,
         }
     }
 }
-
+int Tmpl8::Game::get_health_from_ptr(Tank* ptr) {
+    return ptr->health;
+}
 /// <summary>
 /// draw the health bars
 /// </summary>
 /// <param name="sorted_tanks"></param>
 /// <param name="team"></param>
-void Tmpl8::Game::draw_health_bars(const std::vector<const Tank*>& sorted_tanks, const int team)
+void Tmpl8::Game::draw_health_bars(const std::vector< Tank*>& sorted_tanks, const int team)
 {
     int health_bar_start_x = (team < 1) ? 0 : (SCRWIDTH - HEALTHBAR_OFFSET) - 1;
     int health_bar_end_x = (team < 1) ? health_bar_width : health_bar_start_x + health_bar_width - 1;
