@@ -62,7 +62,6 @@ vector<KdTree::node*> tobesortedchilderen;
 KdTree tree;
 static ThreadPool threadpool = ThreadPool(std::thread::hardware_concurrency());
 
-
 /// <summary>
 /// initializing game
 /// </summary>
@@ -117,8 +116,8 @@ void Game::init()
         }
     }
 
-    rootBlue = tree.insert_nodes(bluelist,0);
 
+    rootBlue = tree.insert_nodes(bluelist,0);
     rootRed = tree.insert_nodes(redlist, 0);
 
 }
@@ -176,6 +175,7 @@ void Game::nudge_and_collide_tanks() {
 
     vector<KdTree::node*> nodes = *tree.get_tobe_sortedlist(rootBlue, &tobesortedchilderen, 0);
     nodes = *tree.get_tobe_sortedlist(rootRed, &nodes, 0);
+
 
     vector<future<void>> futures_list;
     futures_list.reserve(num_tanks);
@@ -467,6 +467,7 @@ void Game::update(float deltaTime)
         init_tank_routes();
     }
 
+
     nudge_and_collide_tanks();
 
     update_tanks();
@@ -475,7 +476,6 @@ void Game::update(float deltaTime)
     auto root_red_future = threadpool.enqueue([=] {sort_nodes(&rootRed, &tobesortedchilderenred); });
     auto particle_beams_future = threadpool.enqueue([=] {update_particle_beams(); });
     auto find_concave_hull_future = threadpool.enqueue([=] {find_concave_hull(); });
-
 
     find_concave_hull_future.wait();
     particle_beams_future.wait();

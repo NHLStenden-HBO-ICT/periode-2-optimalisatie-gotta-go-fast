@@ -40,7 +40,6 @@ class Game
     __declspec(noinline) void update_particle_beams();
     __declspec(noinline) void update_explosions();
 
-
     void mouse_up(int button)
     { /* implement if you want to detect mouse button presses */
     }
