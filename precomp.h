@@ -82,6 +82,7 @@ using namespace std;
 using namespace Tmpl8;
 
 #include "thread_pool.h"
+#include "sort.h"
 
 #include "tank.h"
 #include "terrain.h"

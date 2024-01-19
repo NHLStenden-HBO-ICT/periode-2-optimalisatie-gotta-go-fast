@@ -18,7 +18,8 @@ class Game
     void draw();
     void tick(float deltaTime);
     void insertion_sort_tanks_health(const std::vector<Tank>& original, std::vector<const Tank*>& sorted_tanks, int begin, int end);
-    void draw_health_bars(const std::vector<const Tank*>& sorted_tanks, const int team);
+    int get_health_from_ptr(Tank* ptr);
+    void draw_health_bars(const std::vector<Tank*>& sorted_tanks, const int team);
     void measure_performance();
 
     Tank& find_closest_enemy(Tank& current_tank);
@@ -58,6 +59,7 @@ class Game
     Surface* screen;
 
     vector<Tank> tanks;
+    vector<Tank*> tank_ptrs_sorted_on_health;
     vector<Rocket> rockets;
     vector<Smoke> smokes;
     vector<Explosion> explosions;

@@ -54,8 +54,12 @@ const static float rocket_radius = 5.f;
 // This function does not count for the performance multiplier
 // (Feel free to optimize anyway though ;) )
 // -----------------------------------------------------------
+
+
+
 void Game::init()
 {
+
     frame_count_font = new Font("assets/digital_small.png", "ABCDEFGHIJKLMNOPQRSTUVWXYZ:?!=-0123456789.");
 
     tanks.reserve(num_tanks_blue + num_tanks_red);
@@ -81,6 +85,11 @@ void Game::init()
     {
         vec2 position{ start_red_x + ((i % max_rows) * spacing), start_red_y + ((i / max_rows) * spacing) };
         tanks.push_back(Tank(position.x, position.y, RED, &tank_red, &smoke, 100.f, position.y + 16, tank_radius, tank_max_health, tank_max_speed));
+    }
+
+
+    for (Tank& tank: tanks) {
+        tank_ptrs_sorted_on_health.push_back(&tank);
     }
 
     particle_beams.push_back(Particle_beam(vec2(590, 327), vec2(100, 50), &particle_beam_sprite, particle_beam_hit_value));
@@ -396,6 +405,10 @@ void Game::update(float deltaTime)
     update_explosions();    
 }
 
+int Game::get_health_from_ptr(Tank* ptr) {
+    return ptr->health;
+}
+
 // -----------------------------------------------------------
 // Draw all sprites to the screen
 // (It is not recommended to multi-thread this function)
@@ -452,13 +465,18 @@ void Game::draw()
         const int NUM_TANKS = ((t < 1) ? num_tanks_blue : num_tanks_red);
 
         const int begin = ((t < 1) ? 0 : num_tanks_blue);
-        std::vector<const Tank*> sorted_tanks;
-        insertion_sort_tanks_health(tanks, sorted_tanks, begin, begin + NUM_TANKS);
-        sorted_tanks.erase(std::remove_if(sorted_tanks.begin(), sorted_tanks.end(), [](const Tank* tank) { return !tank->active; }), sorted_tanks.end());
+        std::vector<Tank*> sorted_tanks;
 
-        draw_health_bars(sorted_tanks, t);
+        Sort<Tank*, int(Tmpl8::Game::*)(Tank*), Game* >::simplified_timsort(tank_ptrs_sorted_on_health, sorted_tanks, &Game::get_health_from_ptr, this);
+        tank_ptrs_sorted_on_health = sorted_tanks;
+        //insertion_sort_tanks_health(tanks, sorted_tanks, begin, begin + NUM_TANKS);
+        tank_ptrs_sorted_on_health.erase(std::remove_if(tank_ptrs_sorted_on_health.begin(), tank_ptrs_sorted_on_health.end(), [](const Tank* tank) { return !tank->active; }), tank_ptrs_sorted_on_health.end());
+
+
+        draw_health_bars(tank_ptrs_sorted_on_health, t);
     }
 }
+
 
 // -----------------------------------------------------------
 // Sort tanks by health value using insertion sort
@@ -495,7 +513,7 @@ void Tmpl8::Game::insertion_sort_tanks_health(const std::vector<Tank>& original,
 // -----------------------------------------------------------
 // Draw the health bars based on the given tanks health values
 // -----------------------------------------------------------
-void Tmpl8::Game::draw_health_bars(const std::vector<const Tank*>& sorted_tanks, const int team)
+void Tmpl8::Game::draw_health_bars(const std::vector< Tank*>& sorted_tanks, const int team)
 {
     int health_bar_start_x = (team < 1) ? 0 : (SCRWIDTH - HEALTHBAR_OFFSET) - 1;
     int health_bar_end_x = (team < 1) ? health_bar_width : health_bar_start_x + health_bar_width - 1;
