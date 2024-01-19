@@ -6,7 +6,8 @@ namespace Tmpl8
 
 void Smoke::tick()
 {
-    if (++current_frame == 60) current_frame = 0;
+    ++current_frame;
+    if (current_frame == 60) current_frame = 0;
 }
 
 void Smoke::draw(Surface* screen)
