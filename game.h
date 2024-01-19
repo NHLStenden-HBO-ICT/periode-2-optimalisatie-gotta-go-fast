@@ -66,7 +66,6 @@ class Game
 
     vector<Tank> tanks;
     vector<Tank*> tank_ptrs_sorted_on_health;
-    vector<Rocket> rockets;
     vector<Smoke> smokes;
     vector<Explosion> explosions;
     vector<Particle_beam> particle_beams;
