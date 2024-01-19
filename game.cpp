@@ -17,7 +17,7 @@ constexpr auto health_bar_width = 70;
 constexpr auto max_frames = 2000;
 
 //Global performance timer
-constexpr auto REF_PERFORMANCE = 157596; //UPDATE THIS WITH YOUR REFERENCE PERFORMANCE (see console after 2k frames)
+constexpr auto REF_PERFORMANCE = 63235.9; //UPDATE THIS WITH YOUR REFERENCE PERFORMANCE (see console after 2k frames)
 static timer perf_timer;
 static float duration;
 
@@ -96,6 +96,11 @@ void Game::init()
     {
         vec2 position{ start_red_x + ((i % max_rows) * spacing), start_red_y + ((i / max_rows) * spacing) };
         tanks.push_back(Tank(position.x, position.y, RED, &tank_red, &smoke, 100.f, position.y + 16, tank_radius, tank_max_health, tank_max_speed));
+    }
+
+
+    for (Tank& tank: tanks) {
+        tank_ptrs_sorted_on_health.push_back(&tank);
     }
 
     particle_beams.push_back(Particle_beam(vec2(590, 327), vec2(100, 50), &particle_beam_sprite, particle_beam_hit_value));
@@ -547,11 +552,14 @@ void Game::draw()
         const int NUM_TANKS = ((t < 1) ? num_tanks_blue : num_tanks_red);
 
         const int begin = ((t < 1) ? 0 : num_tanks_blue);
-        std::vector<const Tank*> sorted_tanks;
-        insertion_sort_tanks_health(tanks, sorted_tanks, begin, begin + NUM_TANKS);
-        sorted_tanks.erase(std::remove_if(sorted_tanks.begin(), sorted_tanks.end(), [](const Tank* tank) { return !tank->active; }), sorted_tanks.end());
+        //vector<Tank*> sorted_tanks;
+        //sorted_tanks.reserve(tank_ptrs_sorted_on_health.size());
+        Sort<Tank*, int(Tmpl8::Game::*)(Tank*), Game* >::binary_insertion_sort(tank_ptrs_sorted_on_health, &Game::get_health_from_ptr, this);
+        //tank_ptrs_sorted_on_health = sorted_tanks;
+        tank_ptrs_sorted_on_health.erase(std::remove_if(tank_ptrs_sorted_on_health.begin(), tank_ptrs_sorted_on_health.end(), [](const Tank* tank) { return !tank->active; }), tank_ptrs_sorted_on_health.end());
 
-        draw_health_bars(sorted_tanks, t);
+
+        draw_health_bars(tank_ptrs_sorted_on_health, t);
     }
 }
 
@@ -590,13 +598,22 @@ void Tmpl8::Game::insertion_sort_tanks_health(const std::vector<Tank>& original,
         }
     }
 }
+/// <summary>
+/// returns the health of a tank, provided a pointer
+/// </summary>
+/// <param name="ptr"> a pointer to the tank</param>
+/// <returns>the health of said tank</returns>
+int Tmpl8::Game::get_health_from_ptr(Tank* ptr)
+{
+    return ptr->health;
+}
 
 /// <summary>
 /// draw the health bars
 /// </summary>
 /// <param name="sorted_tanks"></param>
 /// <param name="team"></param>
-void Tmpl8::Game::draw_health_bars(const std::vector<const Tank*>& sorted_tanks, const int team)
+void Tmpl8::Game::draw_health_bars(const std::vector<Tank*>& sorted_tanks, const int team)
 {
     int health_bar_start_x = (team < 1) ? 0 : (SCRWIDTH - HEALTHBAR_OFFSET) - 1;
     int health_bar_end_x = (team < 1) ? health_bar_width : health_bar_start_x + health_bar_width - 1;

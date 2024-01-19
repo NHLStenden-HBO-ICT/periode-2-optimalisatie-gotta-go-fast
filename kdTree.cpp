@@ -42,8 +42,7 @@ namespace Tmpl8 {
             return NULL;
         }
 
-        list = sort_nodes(list, depth);
-
+        sort_nodes(list, depth);
 
         int medianindex = (list.size()-1)/2;
 
@@ -272,56 +271,32 @@ namespace Tmpl8 {
         return tobesortedchilderen;
     }
 
+    float KdTree::get_tank_x(node* node_ptr)
+    {
+        return node_ptr->tank->position.x;
+    }
+
+    float KdTree::get_tank_y(node* node_ptr)
+    {
+        return node_ptr->tank->position.y;
+    }
+    
     /// <summary>
     /// sort the nodes based on x or y 
     /// </summary>
     /// <param name="list"> the list of nodes to be sorted</param>
     /// <param name="depth"> the depth which determines whether x or y even x uneven y</param>
     /// <returns>the sorted list</returns>
-    vector<KdTree::node*> KdTree::sort_nodes(vector<node*> list, int depth)
+    void KdTree::sort_nodes(vector<node*>& input, int depth)
     {
-        for ( int i = 0; i < list.size(); i++)
-        {
-            node* currentnode = list[i];
 
-            for (int s = i - 1; s >= 0; s--) {
-
-                node* checkingnode = list[s];
-
-                if (depth % 2 == 0) {
-                    if (currentnode->tank->position.x < checkingnode->tank->position.x) {
-
-                        list[s] = currentnode;
-                        list[s + 1] = checkingnode;
-                    }
-                    else if (currentnode->tank->position.x == checkingnode->tank->position.x && currentnode->tank->position.y < checkingnode->tank->position.y) {
-
-                        list[s] = currentnode;
-                        list[s + 1] = checkingnode;
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-                else if (depth % 2 != 0) {
-                    if (currentnode->tank->position.y < checkingnode->tank->position.y && depth % 2 != 0) {
-                        list[s] = currentnode;
-                        list[s + 1] = checkingnode;
-                    }
-                    else if (currentnode->tank->position.y == checkingnode->tank->position.y && currentnode->tank->position.x < checkingnode->tank->position.x && depth % 2 != 0) {
-                        list[s] = currentnode;
-                        list[s + 1] = checkingnode;
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-            }
+        if (depth % 2 == 0) {
+            Sort< node*, float(Tmpl8::KdTree::*)(node*), KdTree*>::insertion_sort(input, &KdTree::get_tank_x, this);
+            return;
         }
 
-        return list;
+        Sort< node*, float(Tmpl8::KdTree::*)(node*), KdTree*>::insertion_sort(input, &KdTree::get_tank_y, this);
+        return;
     }
 
     /// <summary>

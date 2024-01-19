@@ -141,6 +141,7 @@
     <ClInclude Include="precomp.h" />
     <ClInclude Include="rocket.h" />
     <ClInclude Include="smoke.h" />
+    <ClInclude Include="sort.h" />
     <ClInclude Include="surface.h" />
     <ClInclude Include="tank.h" />
     <ClInclude Include="template.h" />

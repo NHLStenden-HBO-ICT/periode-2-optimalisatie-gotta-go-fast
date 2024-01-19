@@ -21,7 +21,8 @@ class Game
     void draw();
     void tick(float deltaTime);
     void insertion_sort_tanks_health(const std::vector<Tank>& original, std::vector<const Tank*>& sorted_tanks, int begin, int end);
-    void draw_health_bars(const std::vector<const Tank*>& sorted_tanks, const int team);
+    int get_health_from_ptr(Tank* ptr);
+    void draw_health_bars(const std::vector<Tank*>& sorted_tanks, const int team);
     void measure_performance();
     void sort_nodes(KdTree::node** root, vector<KdTree::node*>* tobesortedchilderen);
     void nudge_and_collide_tank(KdTree::node* node, KdTree::node* rootblue, KdTree::node* rootred);
@@ -64,7 +65,7 @@ class Game
     Surface* screen;
 
     vector<Tank> tanks;
-    //vector<Rocket> rockets;
+    vector<Tank*> tank_ptrs_sorted_on_health;
     vector<Smoke> smokes;
     vector<Explosion> explosions;
     vector<Particle_beam> particle_beams;
