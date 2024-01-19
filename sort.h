@@ -12,7 +12,6 @@ namespace Tmpl8
 	class Sort
 	{
 	public:
-
 		/// <summary>
 		/// pretty standard binary search implementation.
 		/// </summary>
@@ -36,7 +35,7 @@ namespace Tmpl8
 				return start_of_range;
 			}
 
-
+			//start of the actual binary search
 			int middle = round((start_of_range + end_of_range) / 2);
 
 			if ((clss->*get)(vector[middle]) < value) {
@@ -75,7 +74,7 @@ namespace Tmpl8
 				return start_of_range;
 			}
 
-
+			//start of the actual binary search
 			int middle = round((start_of_range + end_of_range) / 2);
 
 			if ((clss->*get)(vector[middle]) < value) {
@@ -87,14 +86,15 @@ namespace Tmpl8
 
 			return middle;
 		}
+
 		/// <summary>
-		/// 
+		/// Merges two ordered vectors into a third.
 		/// </summary>
-		/// <param name="a"></param>
-		/// <param name="b"></param>
-		/// <param name="result"></param>
-		/// <param name="get"></param>
-		/// <param name="clss"></param>
+		/// <param name="a"> a vector that you want to merge</param>
+		/// <param name="b"> another vector that you want to merge</param>
+		/// <param name="result">a vector that should contain the end result</param>
+		/// <param name="get">a pointer to a function that takes an instance of the templated class and returns a numerical value</param>
+		/// <param name="clss">the class that the get function belongs to. We can't call it if we don't have that function for misterious c++ reasons</param>
 		static void merge(vector<T>& a, vector<T>& b, vector<T>& result, Get get, Class clss) {
 			result.reserve(a.size() + b.size());
 
@@ -150,6 +150,14 @@ namespace Tmpl8
 			}
 		}
 
+
+		/// <summary>
+		/// Merges one ordered vector into another.
+		/// </summary>
+		/// <param name="a"> a vector that you want to merge</param>
+		/// <param name="b"> the vector that you want to merge into</param>
+		/// <param name="get">a pointer to a function that takes an instance of the templated class and returns a numerical value</param>
+		/// <param name="clss">the class that the get function belongs to. We can't call it if we don't have that function for misterious c++ reasons</param>
 		static void merge(vector<T>& a, vector<T>& b, Get get, Class clss) {
 			b.reserve(a.size() + b.size());
 
@@ -241,7 +249,7 @@ namespace Tmpl8
 				return;
 			}
 
-			//textbook implementation of a insertion sort
+			//binary insertion sort
 			int i = 1;
 			while (i < vector.size()) {
 				int desired_index = binary_search(vector, get, clss, (clss->*get)(vector[i]), 0, i - 1);
@@ -256,7 +264,13 @@ namespace Tmpl8
 
 	
 		
-
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="input"></param>
+		/// <param name="result"></param>
+		/// <param name="get"></param>
+		/// <param name="clss"></param>
 		static void simplified_timsort(vector<T>& input, vector<T>& result, Get get, Class clss) {
 			//for since insertion sort algorithms work well on small arrays we won't bother with this algo if it the input is small
 			//cutoff point is arbitrary here. I did not get to test this.
@@ -267,9 +281,6 @@ namespace Tmpl8
 			}
 			
 			result.reserve(input.size());
-
-			//we're just shoving this in a vec but actual timsort uses a stack here
-			//vector<vector<T>> runs;
 
 			vector<T> new_run;
 			new_run.emplace_back(input[0]);
@@ -287,8 +298,6 @@ namespace Tmpl8
 				}
 
 				//try to start a new run
-				
-
 				if ((clss->*get)(input[i]) >= (clss->*get)(new_run[new_run.size() - 1])) { //ascending run
 					new_run.emplace_back(input[i]);
 					i++;
