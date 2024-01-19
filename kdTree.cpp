@@ -290,13 +290,13 @@ namespace Tmpl8 {
     void KdTree::sort_nodes(vector<node*>& input, int depth)
     {
 
-        /*if (depth % 2 == 0) {
+        if (depth % 2 == 0) {
             Sort< node*, float(Tmpl8::KdTree::*)(node*), KdTree*>::binary_insertion_sort(input, &KdTree::get_tank_x, this);
             return;
         }
 
         Sort< node*, float(Tmpl8::KdTree::*)(node*), KdTree*>::binary_insertion_sort(input, &KdTree::get_tank_y, this);
-        return;*/
+        return;
         /*
         for ( int i = 0; i < list.size(); i++)
         {
