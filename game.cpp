@@ -598,11 +598,16 @@ void Tmpl8::Game::insertion_sort_tanks_health(const std::vector<Tank>& original,
         }
     }
 }
-
+/// <summary>
+/// returns the health of a tank, provided a pointer
+/// </summary>
+/// <param name="ptr"> a pointer to the tank</param>
+/// <returns>the health of said tank</returns>
 int Tmpl8::Game::get_health_from_ptr(Tank* ptr)
 {
     return ptr->health;
 }
+
 /// <summary>
 /// draw the health bars
 /// </summary>
