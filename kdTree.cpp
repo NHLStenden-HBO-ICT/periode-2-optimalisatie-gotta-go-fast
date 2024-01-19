@@ -41,9 +41,11 @@ namespace Tmpl8 {
         if (list.size() == 0) {
             return NULL;
         }
+        vector<node*> sorted_list;
+        sorted_list.reserve(list.size());
 
-        list = sort_nodes(list, depth);
-
+        sort_nodes(list, sorted_list, depth);
+        list = sorted_list;
 
         int medianindex = (list.size()-1)/2;
 
@@ -272,14 +274,33 @@ namespace Tmpl8 {
         return tobesortedchilderen;
     }
 
+    float KdTree::get_tank_x(node* node_ptr)
+    {
+        return node_ptr->tank->position.x;
+    }
+
+    float KdTree::get_tank_y(node* node_ptr)
+    {
+        return node_ptr->tank->position.y;
+    }
+    
     /// <summary>
     /// sort the nodes based on x or y 
     /// </summary>
     /// <param name="list"> the list of nodes to be sorted</param>
     /// <param name="depth"> the depth which determines whether x or y even x uneven y</param>
     /// <returns>the sorted list</returns>
-    vector<KdTree::node*> KdTree::sort_nodes(vector<node*> list, int depth)
+    void KdTree::sort_nodes(vector<node*>& input, vector<node*>& output, int depth)
     {
+
+        if (depth % 2 == 0) {
+            Sort< node*, float(Tmpl8::KdTree::*)(node*), KdTree*>::simplified_timsort(input, output, &KdTree::get_tank_x, this);
+            return;
+        }
+
+        Sort< node*, float(Tmpl8::KdTree::*)(node*), KdTree*>::simplified_timsort(input, output, &KdTree::get_tank_y, this);
+        return;
+        /*
         for ( int i = 0; i < list.size(); i++)
         {
             node* currentnode = list[i];
@@ -321,7 +342,7 @@ namespace Tmpl8 {
             }
         }
 
-        return list;
+        return list;*/
     }
 
     /// <summary>

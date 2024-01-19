@@ -31,7 +31,10 @@ namespace Tmpl8 {
 
         vector<node*>* get_tobe_sortedlist(node* root, vector<node*>* tobesortedchilderen, int i);
 
-        vector<node*> sort_nodes(vector<node*> list, int i);
+        float get_tank_x(node* node_ptr);
+        float get_tank_y(node* node_ptr);
+
+        void sort_nodes(vector<node*>& input, vector<node*>& output, int i);
 
         float get_distance_squared(vec2 t1, vec2 t2,int i);
     };
