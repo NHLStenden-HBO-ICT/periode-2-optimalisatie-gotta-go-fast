@@ -552,9 +552,10 @@ void Game::draw()
         const int NUM_TANKS = ((t < 1) ? num_tanks_blue : num_tanks_red);
 
         const int begin = ((t < 1) ? 0 : num_tanks_blue);
-
-        Sort<Tank*, int(Tmpl8::Game::*)(Tank*), Game* >::simplified_timsort(tank_ptrs_sorted_on_health, sorted_tanks, &Game::get_health_from_ptr, this);
-        tank_ptrs_sorted_on_health = sorted_tanks;
+        //vector<Tank*> sorted_tanks;
+        //sorted_tanks.reserve(tank_ptrs_sorted_on_health.size());
+        Sort<Tank*, int(Tmpl8::Game::*)(Tank*), Game* >::binary_insertion_sort(tank_ptrs_sorted_on_health, &Game::get_health_from_ptr, this);
+        //tank_ptrs_sorted_on_health = sorted_tanks;
         tank_ptrs_sorted_on_health.erase(std::remove_if(tank_ptrs_sorted_on_health.begin(), tank_ptrs_sorted_on_health.end(), [](const Tank* tank) { return !tank->active; }), tank_ptrs_sorted_on_health.end());
 
 
