@@ -41,11 +41,8 @@ namespace Tmpl8 {
         if (list.size() == 0) {
             return NULL;
         }
-        vector<node*> sorted_list;
-        sorted_list.reserve(list.size());
 
-        sort_nodes(list, sorted_list, depth);
-        list = sorted_list;
+        sort_nodes(list, depth);
 
         int medianindex = (list.size()-1)/2;
 
@@ -290,16 +287,16 @@ namespace Tmpl8 {
     /// <param name="list"> the list of nodes to be sorted</param>
     /// <param name="depth"> the depth which determines whether x or y even x uneven y</param>
     /// <returns>the sorted list</returns>
-    void KdTree::sort_nodes(vector<node*>& input, vector<node*>& output, int depth)
+    void KdTree::sort_nodes(vector<node*>& input, int depth)
     {
 
-        if (depth % 2 == 0) {
-            Sort< node*, float(Tmpl8::KdTree::*)(node*), KdTree*>::simplified_timsort(input, output, &KdTree::get_tank_x, this);
+        /*if (depth % 2 == 0) {
+            Sort< node*, float(Tmpl8::KdTree::*)(node*), KdTree*>::binary_insertion_sort(input, &KdTree::get_tank_x, this);
             return;
         }
 
-        Sort< node*, float(Tmpl8::KdTree::*)(node*), KdTree*>::simplified_timsort(input, output, &KdTree::get_tank_y, this);
-        return;
+        Sort< node*, float(Tmpl8::KdTree::*)(node*), KdTree*>::binary_insertion_sort(input, &KdTree::get_tank_y, this);
+        return;*/
         /*
         for ( int i = 0; i < list.size(); i++)
         {
