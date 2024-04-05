@@ -335,73 +335,70 @@ void Game::find_concave_hull() {
 /// Loop over all the rockets, move and collide them with either the tanks or the concave hull
 /// </summary>
 void Game::update_rockets() {
-    for (auto rocket_iterator = rockets_pool.used_items.begin(); rocket_iterator != rockets_pool.used_items.end(); )
+    vector<Rocket*> rockets_to_process;
+    mutex* smoke_mtx = new mutex();
+    mutex* explosion_mtx = new mutex();
+    for (auto& it : rockets_pool.used_items)
     {
-        Rocket* rocket = *rocket_iterator;
-        bool found = false;
-        rocket->tick();
-        Tank* tank; 
+        rockets_to_process.push_back(it.second);
+    }
+    
+    explosions.reserve(rockets_to_process.size());
+    smokes.reserve(rockets_to_process.size());
+    vector<future<void>> futures_list;
+    futures_list.reserve(rockets_to_process.size());
 
-        if (rocket->allignment == RED) {
-            tank = tree.search_closest(root_Blue, rocket->position, 0)->tank;
-        }
-        else if (rocket->allignment == BLUE) {
-            tank = tree.search_closest(root_Red, rocket->position, 0)->tank;
-        }
-
-        if (rocket->intersects(tank->position, tank->collision_radius))
-        {
-            explosions.push_back(Explosion(&explosion, tank->position));
-
-            if (tank->hit(rocket_hit_value))
-            {
-                smokes.push_back(Smoke(smoke, tank->position - vec2(7, 24)));
-            }
-
-            rocket_iterator = rockets_pool.free(rocket_iterator);
-            found = true;
-            
-        }
-
-        if (!found) {
-            ++rocket_iterator;
-        }
-        if (rocket_iterator > rockets_pool.used_items.end()) {
-            break;
-        }
-
+    for (auto rocket : rockets_to_process) {
+        futures_list.emplace_back(threadpool.enqueue([=] {update_rocket(rocket, tree, root_Red, root_Blue, forcefield_hull, smoke_mtx, explosion_mtx); }));
     }
 
-    //Disable rockets if they collide with the "forcefield"
-    //Hint: A point to convex hull intersection test might be better here? :) (Disable if outside)
-    for (auto rocket_iterator = rockets_pool.used_items.begin(); rocket_iterator != rockets_pool.used_items.end(); )
-    {
-        Rocket* rocket_ptr = *rocket_iterator;
-        bool found = false;
-
-        if (rocket_ptr->active)
-        {
-            for (size_t i = 0; i < forcefield_hull.size(); i++)
-            {
-                if (circle_segment_intersect(forcefield_hull.at(i), forcefield_hull.at((i + 1) % forcefield_hull.size()), rocket_ptr->position, rocket_ptr->collision_radius))
-                {
-                    explosions.push_back(Explosion(&explosion, rocket_ptr->position));
-                    rocket_iterator = rockets_pool.free(rocket_iterator);
-                    found = true;
-                }
-            }
-        }
-        if (!found) {
-            ++rocket_iterator;
-        }
-        if (rocket_iterator > rockets_pool.used_items.end()) {
-            break;
-        }
+    for (future<void>& future : futures_list) {
+        future.wait();
     }
-
-    //Remove exploded rockets with remove erase idiom
-    //rockets.erase(std::remove_if(rockets.begin(), rockets.end(), [](const Rocket& rocket) { return !rocket.active; }), rockets.end());
 }
+
+void Tmpl8::Game::update_rocket(Rocket* ptr_rocket, KdTree& tree, KdTree::node* root_red, KdTree::node* root_blue, vector<vec2>& forcefield_hull, mutex* smoke_mtx, mutex* explosion_mtx)
+{
+    ptr_rocket->tick();
+    Tank* tank;
+
+    if (ptr_rocket->allignment == RED) {
+        tank = tree.search_closest(root_Blue, ptr_rocket->position, 0)->tank;
+    }
+    else {
+        tank = tree.search_closest(root_Red, ptr_rocket->position, 0)->tank;
+    }
+
+    if (ptr_rocket->intersects(tank->position, tank->collision_radius))
+    {
+        explosion_mtx->lock();
+        explosions.push_back(Explosion(&explosion, tank->position));
+        explosion_mtx->unlock();
+
+        if (tank->hit(rocket_hit_value))
+        {
+            smoke_mtx->lock();
+            smokes.push_back(Smoke(smoke, tank->position - vec2(7, 24)));
+            smoke_mtx->unlock();
+        }
+
+        rockets_pool.free(ptr_rocket);
+        return;
+    }
+
+    for (size_t i = 0; i < forcefield_hull.size(); i++)
+    {
+        if (circle_segment_intersect(forcefield_hull.at(i), forcefield_hull.at((i + 1) % forcefield_hull.size()), ptr_rocket->position, ptr_rocket->collision_radius))
+        {
+            explosion_mtx->lock();
+            explosions.push_back(Explosion(&explosion, tank->position));
+            explosion_mtx->unlock();
+            rockets_pool.free(ptr_rocket);
+            return;
+        }
+    }
+}
+
 
 
 /// <summary>
@@ -516,9 +513,9 @@ void Game::draw()
         vec2 tank_pos = tanks.at(i).get_position();
     }
 
-    for (Rocket* rocket : rockets_pool.used_items)
+    for (auto &rocket : rockets_pool.used_items)
     {
-        rocket->draw(screen);
+        rocket.second->draw(screen);
     }
 
     for (Smoke& smoke : smokes)

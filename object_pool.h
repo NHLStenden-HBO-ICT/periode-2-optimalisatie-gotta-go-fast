@@ -10,21 +10,21 @@ namespace Tmpl8 {
 		//all our shit's public because we need access to these pools
 		//modify the pools in any other way but the profided methods at your own peril.
 		vector<T> pool;
-		//a deque is like a vector, except that you can add and remove on both sides.
-		deque<T*> free_items;
-		deque<T*> used_items;
+		
+		unordered_map<T*, T*> used_items;
+		unordered_map<T*, T*> free_items;
 
 
 		ObjectPool(int size, T example) {
 			this->size = size;
 			//allocate all the memory right away
 			pool.reserve(size);
+			used_items.reserve(size);
 
 			//instantiate all the items in the pool
-			//and add all the free items to the free pool
 			for (int i = 0; i < size; i++) {
 				pool.emplace_back(example);
-				free_items.emplace_front(&(pool[i]));
+				free_items.insert({&pool[i], &pool[i] });
 			}
 		};
 		
@@ -36,14 +36,9 @@ namespace Tmpl8 {
 		/// <returns>Pointer to an unused item</returns>
 		T* get() {
 			mtx.lock();
-			//get the index of the last free item in the deque
-			size_t index = free_items.size() - 1;
-			//get the pointer at that index
-			T* ptr = free_items[index];
-			//remove that pointer from the deque
-			free_items.pop_back();
-			//add that pointer to the start of the used_items deque
-			used_items.emplace_front(ptr);
+			T* ptr = (*free_items.begin()).second;
+			free_items.erase(ptr);
+			used_items.insert({ ptr, ptr });
 			mtx.unlock();
 			return ptr;
 		};
@@ -51,18 +46,12 @@ namespace Tmpl8 {
 		/// <summary>
 		/// Frees up an item that's no longer used.
 		/// </summary>
-		/// <param name="iterator"> points to the item that will be freed</param>
-		typename deque<T*>::iterator free(typename deque<T*>::iterator it) {
+		/// <param name="pointer"> points to the item that will be freed</param>
+		void free(T* ptr) {
 			mtx.lock();
-			//simply add the pointer at the index to the free items pool and then remove it from used items
-			//we do this with an iterator, though doing it by index would also be possible
-			//when I made this I was of the opinion that this was neater because it's now container agnositic. 
-			//If we want to switch from a deque to something else nothing needs to change
-			free_items.emplace_front(*it);
-			deque<T*>::iterator return_value= used_items.erase(it);
+			used_items.erase(ptr);
+			free_items.insert({ ptr, ptr });
 			mtx.unlock();
-			return return_value;
-			
 		};
 		
 		/// <summary>
@@ -73,7 +62,7 @@ namespace Tmpl8 {
 			stringstream str;
 			str << "object pool {" << endl;
 			str << "  size: " << this->size << endl;
-			str << "  free: " << free_items.size() << endl;
+			str << "  free: " << used_items.size() << endl;
 			str << "  used: " << used_items.size() << endl;
 			str << "}" << endl;
 
