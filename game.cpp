@@ -357,6 +357,9 @@ void Game::update_rockets() {
     }
 }
 
+/// <summary>
+///     Update individual rocket, given a pointer to said rocket
+/// </summary>
 void Tmpl8::Game::update_rocket(Rocket* ptr_rocket, KdTree& tree, KdTree::node* root_red, KdTree::node* root_blue, vector<vec2>& forcefield_hull, mutex* smoke_mtx, mutex* explosion_mtx)
 {
     ptr_rocket->tick();
